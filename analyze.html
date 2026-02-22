@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Page title shown in the browser tab and search results -->
+  <title>أناه | تحليل المزاج</title>
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Tajawal font import for Arabic UI -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js library for generating visual charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="page-analyze has-animated-bg">
+
+  <!-- Animated background blobs used for visual decoration -->
+  <div class="bg-blobs">
+    <div class="blob mint"></div>
+    <div class="blob peach"></div>
+    <div class="blob purple"></div>
+  </div>
+
+  <!-- Main site header and navigation bar -->
+  <header class="site-header">
+    <div class="shell">
+      <nav class="nav">
+        <!-- Website logo linking to the homepage -->
+        <a href="index.html" class="brand">
+          <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
+          <span>أناه</span>
+        </a>
+
+        <!-- Primary navigation menu -->
+        <ul class="nav-links">
+          <li><a href="home.html" class=" anim-underline">الرئيسية</a></li>
+          <li><a href="journal.html" class="anim-underline">اليوميات</a></li>
+          <li><a href="analyze.html" class="active anim-underline">تحليل المزاج</a></li>
+        </ul>
+
+        <!-- Login / Sign up button -->
+        <a id="authButton" href="SignOrLogin.html" class="pill-button pill-ghost">
+          تسجيل / دخول
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main content for the Mood Analysis page -->
+  <main class="analyze-main">
+    <div class="analyze-container">
+
+      <!-- Header section containing title, description, and selected analysis range -->
+      <section class="analyze-header-top">
+        <div>
+          <p class="eyebrow">لوحة تحليل مشاعرك</p>
+          <h1 class="analyze-title">نظرة أعمق على مزاجك</h1>
+          <p class="analyze-lead type-soft ">يتم تحليل مشاعرك بناءً على مذكراتك اليومية.</p>
+        </div>
+
+        <!-- Displays the currently selected date range -->
+        <div class="analyze-header-meta">
+          <span class="an-meta-chip" id="analysisRange">آخر ٧ أيام</span>
+        </div>
+      </section>
+
+      <!-- Buttons allowing the user to switch between analysis ranges -->
+      <div class="an-chip-group">
+        <button class="an-chip is-active" data-range="7">آخر ٧ أيام</button>
+        <button class="an-chip" data-range="30">آخر ٣٠ يوم</button>
+        <button class="an-chip" data-range="90">آخر ٩٠ يوم</button>
+      </div>
+
+      <!-- Layout grid containing all analysis cards and charts -->
+      <section class="an-grid">
+        
+        <!-- Mood fluctuation chart card -->
+        <section class="an-card an-card--primary">
+          <h2>تذبذب المزاج</h2>
+          <p class="an-subtext">
+            يعرض هذا الرسم عدد مرات ظهور كل شعور في مذكراتك خلال الفترة المختارة.
+          </p>
+          <div class="an-chart-wrap">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <!-- Card containing top emotions and mood history -->
+      <section>
+
+  <!-- أعلى المشاعر -->
+  <section class="an-card">
+    <h2>أعلى مشاعر ظهورًا</h2>
+    <div class="an-metrics" id="topMoods"></div>
+  </section>
+
+  <!-- ✅ Recommendations card -->
+  <section class="an-card" id="recommendationCard" style="margin-top:14px">
+    <h2>توصيات مخصّصة لك</h2>
+    <p class="an-subtext">
+      بناءً على حالتك النفسية الأخيرة ونمط مشاعرك.
+    </p>
+
+    <p class="an-subtext" id="recWeekNote"></p>
+
+    <div class="rec-quote" id="recQuote"></div>
+
+    <div class="rec-section">
+      <h4>خطوات سريعة</h4>
+      <ul id="recQuick"></ul>
+    </div>
+
+    <div class="rec-section">
+      <h4>اقتراحات لليوم</h4>
+      <ul id="recDaily"></ul>
+    </div>
+  </section>
+
+  <!-- سجل المشاعر -->
+  <section class="an-card" style="margin-top:14px">
+    <h2>سجل المشاعر</h2>
+    <div class="an-mood-list" id="moodList"></div>
+  </section>
+
+</section>
+
+    </div>
+  </main>
+
+  <!-- Footer section showing copyright and additional site links -->
+  <footer class="site-footer">
+    <div class="shell footer-row">
+      <div class="footer-left">
+        <!-- Footer brand/logo -->
+        <a href="index.html" class="brand">
+          <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
+          <span>أناه</span>
+        </a>
+        <span class="footer-copy"> © <span id="year"></span> أناه </span>
+        <span class="footer-tagline"> مساحة صغيرة تهتم بمشاعرك بلطف. </span>
+      </div>
+
+      <!-- Secondary footer navigation links -->
+      <nav class="footer-links">
+        <a href="#about">عن أناه</a>
+        <span class="footer-dot">·</span>
+        <a href="#features">المزايا</a>
+        <span class="footer-dot">·</span>
+        <a href="team.html">فريق أناه</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Linked JavaScript files handling utilities and page functionality -->
+<script src="utils.js"></script>
+<script src="home.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+<script src="firebase-config.js"></script>
+<script src="analyze.js?v=2"></script>  
+</body>
+</html>

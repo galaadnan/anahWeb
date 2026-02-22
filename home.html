@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Page title shown in the browser tab and search results -->
+    <title>أناه | الصفحة الرئيسية</title>
+
+    <!-- Main stylesheets for layout and modal windows -->
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="modal.css" />
+
+    <!-- Tajawal font import for Arabic UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="page-home has-animated-bg">
+
+    <!-- Animated background blobs for visual decoration -->
+    <div class="bg-blobs">
+      <div class="blob mint"></div>
+      <div class="blob peach"></div>
+      <div class="blob purple"></div>
+    </div>
+
+    <!-- Main site header and navigation bar -->
+    <header class="site-header">
+      <div class="shell">
+        <nav class="nav">
+          <!-- Website logo linking to homepage -->
+          <a href="index.html" class="brand">
+            <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
+            <span>أناه</span>
+          </a>
+
+          <!-- Primary navigation menu -->
+          <ul class="nav-links">
+            <li>
+              <a href="home.html" class="active anim-underline">الرئيسية</a>
+            </li>
+            <li><a href="journal.html" class="anim-underline">اليوميات</a></li>
+            <li>
+              <a href="analyze.html" class="anim-underline">تحليل المزاج</a>
+            </li>
+          </ul>
+
+          <!-- Login / Sign up button -->
+          <a
+            id="authButton"
+            href="SignOrLogin.html"
+            class="pill-button pill-ghost"
+          >
+            تسجيل / دخول
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main content for the Home page -->
+    <main class="home-main shell">
+      <div class="home-container">
+
+        <!-- Top header section containing greeting and summary -->
+        <header class="home-header-top">
+          <div>
+            <p class="eyebrow fade-up">لوحة يومك</p>
+            <h1 class="home-heading fade-up">
+              <span id="greeting">مرحبًا</span>، هذه مساحتك لليوم.
+            </h1>
+            <p class="home-lead fade-up">
+              راقب شعورك، نظّم مهامك الصغيرة، وخذ نظرة سريعة على تقدمك خلال اليوم.
+            </p>
+          </div>
+
+          <!-- Section showing today's date and task stats -->
+          <div class="home-header-meta">
+            <div class="home-meta-date" id="homeToday"></div>
+            <div class="home-meta-stats">
+              <div class="meta-pill">
+                <span>عدد المهام</span>
+                <strong id="tasksTotalCount">0</strong>
+              </div>
+              <div class="meta-pill">
+                <span>المكتملة</span>
+                <strong id="tasksDoneCount">0</strong>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Mood selection card -->
+        <section class="home-card mood-card" aria-label="اختر حالتك المزاجية">
+          <h2>كيف تشعر الآن؟</h2>
+          <p class="mood-hint">
+            اضغط على الأيقونة الأقرب لشعورك في هذه اللحظة.
+          </p>
+
+          <div class="mood-buttons" aria-label="اختر حالتك المزاجية">
+            <button class="mood veryhappy" data-mood="سعيد" type="button">
+              <img src="images/Habby.png" alt="سعيدة جدًا" />
+            </button>
+            <button class="mood angry" data-mood="غاضب" type="button">
+              <img src="images/Angry.png" alt="غاضبة" />
+            </button>
+            <button class="mood worried" data-mood="قلق" type="button">
+              <img src="images/worried.png" alt="قلقة" />
+            </button>
+            <button class="mood tired" data-mood="متعب" type="button">
+              <img src="images/Tired.png" alt="متعبة" />
+            </button>
+            <button class="mood ok" data-mood="لا بأس" type="button">
+              <img src="images/Ok.png" alt="لا بأس" />
+            </button>
+            <button class="mood sad" data-mood="حزين" type="button">
+              <img src="images/Sad.png" alt="حزينة" />
+            </button>
+          </div>
+        </section>
+
+        <!-- Main grid containing progress and task cards -->
+        <section class="home-grid slide-right">
+
+          <!-- Left column containing progress and task lists -->
+          <section class="home-left">
+
+            <!-- Progress card showing daily challenge -->
+            <section
+             class="home-card progress-card"
+              aria-label="تقدم مهام اليوم"
+            >
+              <div class="progress-header">
+                <h2>تقدم مهامك اليوم</h2>
+                <p class="progress-sub">
+                  أنجز القليل اليوم، وتراكمه يصنع فرقًا كبيرًا على المدى البعيد.
+                </p>
+              </div>
+
+              <div class="progress-body">
+                <div class="progress-ring-container">
+                  <svg class="progress-ring" width="140" height="140">
+                    <defs>
+                      <lineargradient
+                        id="gradientRing"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                      >
+                        <stop offset="0%" stop-color="var(--mint)" />
+                        <stop offset="50%" stop-color="var(--purple)" />
+                        <stop offset="100%" stop-color="var(--peach)" />
+                      </lineargradient>
+                    </defs>
+
+                    <circle
+                      class="progress-ring-bg"
+                      cx="70"
+                      cy="70"
+                      r="58"
+                    ></circle>
+
+                    <circle
+                      class="progress-ring-fill"
+                      cx="70"
+                      cy="70"
+                      r="58"
+                    ></circle>
+                  </svg>
+
+                  <div class="progress-center">
+                    <span id="progressText" class="progress-percent">0%</span>
+                    <span class="progress-label">من تحدّي اليوم</span>
+                  </div>
+                </div>
+
+                <div class="progress-side">
+                  <p class="progress-note">
+                    حدد ٣–٥ مهام صغيرة فقط، لا تحتاج أن يكون اليوم مزدحمًا حتى يكون مفيدًا.
+                  </p>
+                  <button
+                    id="startChallengeBtn"
+                    type="button"
+                    class="pill-button pill-primary small primary-cta"
+                  >
+                    ابدأ تحدّي المهام
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Tasks card for today's small tasks -->
+            <section
+              class="home-card tasks-card"
+              aria-label="قائمة المهام الصغيرة"
+            >
+              <header class="tasks-header">
+                <h2>قائمة مهام اليوم</h2>
+                <p>
+                  اختر إيموجي يمثّل شعور المهمة وحدّد وقتًا بسيطًا لإنجازها.
+                </p>
+              </header>
+
+              <!-- New task form -->
+              <div
+                id="newTaskContainer"
+                class="new-task-container"
+              >
+                <form id="newTaskForm" class="new-task-form" novalidate>
+                  <div class="new-task-row">
+                    <!-- Emoji picker for task mood -->
+                    <div
+                      class="emoji-picker"
+                      id="emojiSelector"
+                      aria-label="اختيار إيموجي للمهمة"
+                    >
+                      <button type="button" class="emoji is-active">☀️</button>
+                      <button type="button" class="emoji">📚</button>
+                      <button type="button" class="emoji">🧘🏻‍♀️</button>
+                      <button type="button" class="emoji">🏃‍♂️</button>
+                      <button type="button" class="emoji">💧</button>
+                    </div>
+
+                    <!-- Input fields for task description and duration -->
+                    <div class="new-task-fields">
+                      <label class="field">
+                        <span class="field-label">المهمة</span>
+                        <input
+                          id="taskDescription"
+                          name="taskDescription"
+                          type="text"
+                          placeholder="مثال: مراجعة محاضرة، شرب كوب ماء، 10 دقائق مشي..."
+                          autocomplete="off"
+                        />
+                      </label>
+
+                      <label class="field inline-field">
+                        <span class="field-label">المدة (دقائق)</span>
+                        <input
+                          id="taskTime"
+                          name="taskTime"
+                          type="number"
+                          min="1"
+                          max="600"
+                          step="1"
+                          placeholder="15"
+                          autocomplete="off"
+                          aria-describedby="taskTimeError"
+                        />
+                        <small
+                          id="taskTimeError"
+                          class="field-error"
+                          aria-live="polite"
+                        ></small>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Save task button -->
+                  <div class="form-actions">
+                    <button id="saveTaskBtn" type="button" class="save-btn">
+                      حفظ المهمة
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- List of added tasks -->
+              <div id="taskList" class="task-list" role="list"></div>
+            </section>
+
+          </section>
+
+          <!-- Right column containing quotes and quick actions -->
+          <section class="home-right">
+
+            <!-- Daily quote card -->
+            <section class="home-card quote-card" aria-label="اقتباس اليوم">
+              <h2>اقتباس اليوم</h2>
+              <blockquote id="quoteText" class="quote-text">
+                "أحيانًا يكفي أن تتنفس بعمق لتبدأ من جديد."
+              </blockquote>
+              <p class="quote-author">— فريق أناه</p>
+              <button id="newQuoteBtn" type="button" class="quote-btn">
+                اقتباس آخر
+              </button>
+            </section>
+
+            <!-- Quick links card -->
+            <section class="home-card quick-actions" aria-label="روابط سريعة">
+              <h2>روابط سريعة</h2>
+              <div class="quick-actions-grid">
+                <a href="journal.html" class="home-cta primary-cta">
+                  افتح صفحة اليوميات
+                </a>
+                <a href="analyze.html" class="home-cta ghost-cta">
+                  شاهد تحليل مشاعرك
+                </a>
+              </div>
+              <p class="quick-note">
+                حاول أن تكتب مذكرتك في نهاية اليوم، ثم ارجع لتحليل مشاعرك بعد أيام.
+              </p>
+            </section>
+
+          </section>
+
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Footer section showing copyright and additional site links -->
+    <footer class="site-footer">
+      <div class="shell footer-row">
+        <div class="footer-left">
+          <a href="index.html" class="brand">
+            <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
+            <span>أناه</span>
+          </a>
+          <span class="footer-copy"> © <span id="year"></span> أناه </span>
+          <span class="footer-tagline"> مساحة صغيرة تهتم بمشاعرك بلطف. </span>
+        </div>
+
+        <nav class="footer-links">
+          <a href="#about">عن أناه</a>
+          <span class="footer-dot">·</span>
+          <a href="#features">المزايا</a>
+          <span class="footer-dot">·</span>
+          <a href="team.html">فريق أناه</a>
+        </nav>
+      </div>
+    </footer>
+
+    <!-- Modal windows for task validation -->
+    <div id="emptyTaskModal" class="journal-modal" hidden>
+      <div class="journal-modal-dialog dialog-centered">
+        <div class="modal-icon">
+          <img src="images/error.png" alt="تنبيه" class="modal-icon-img" />
+        </div>
+        <h3 class="modal-title">لحظة من فضلك!</h3>
+        <p class="modal-body">
+          المهام تحتاج إلى عنوان لتكتمل.<br />اكتب وصفاً بسيطاً للمهمة أولاً.
+        </p>
+        <button id="closeEmptyTaskModal" class="pill-button pill-primary full-width">
+          حسناً، سأكتبها
+        </button>
+      </div>
+    </div>
+
+    <div id="timeAlertModal" class="journal-modal" hidden>
+      <div class="journal-modal-dialog time-alert-dialog">
+        <div class="modal-icon">
+          <img src="images/error.png" alt="تنبيه" class="modal-icon-img" />
+        </div>
+        <h3 class="time-title">كم دقيقة؟</h3>
+        <p class="time-body">
+          يجب تحديد وقت تقريبي للمهمة (بالدقائق).<br>اكتب رقمًا فقط (مثلاً: 15).
+        </p>
+        <button id="closeTimeAlertModal" class="pill-button pill-primary full-width">
+          حسناً
+        </button>
+      </div>
+    </div>
+
+    <!-- Chatbot widget for user interaction -->
+    <div class="chatbot-wrapper">
+      <div class="chatbot-tooltip">تحدث معي، أنا هنا لأسمعك 🤍</div>
+      <button class="chatbot-btn" id="chatbotBtn" aria-label="محادثة">
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png"
+          alt="Chatbot"
+          class="chatbot-icon-img"
+        />
+      </button>
+    </div>
+
+    <!-- Chat window containing conversation with the bot -->
+    <div class="chat-window" id="chatWindow">
+      <div class="chat-header">
+        <div class="chat-header-inner">
+          <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="Bot" class="chat-header-avatar" />
+          <span>مساعد أناه الذكي</span>
+        </div>
+        <button id="closeChat" class="chat-close-btn" aria-label="إغلاق">×</button>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot-msg">
+          مرحباً بك 🤍.. أنا هنا لأسمعك، كيف كان يومك؟ أو بماذا تشعر الآن؟
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" id="userMsgInput" placeholder="اكتب شعورك هنا..." />
+        <button id="sendMsgBtn">➤</button>
+      </div>
+    </div>
+
+    <!-- Linked JavaScript files handling utilities and page functionality -->
+  
+   <!-- Firebase FIRST -->
+<!-- Firebase FIRST -->
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+<script src="firebase-config.js"></script>
+<script src="utils.js"></script>
+
+<!-- home.js قبل checklist -->
+<script src="home.js"></script>
+<script src="chicklist.js"></script>
+  </body>
+</html>
