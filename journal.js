@@ -38,7 +38,7 @@ function showJournalStatus(message, type = "info") {
     (e) => {
       if (e.target === modal) modal.hidden = true;
     },
-    { once: true }
+    { once: true },
   );
 }
 
@@ -76,7 +76,7 @@ async function runLocalAnalysis(text) {
     const response = await fetch("http://127.0.0.1:8000/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text }),
     });
 
     if (!response.ok) {
@@ -85,10 +85,29 @@ async function runLocalAnalysis(text) {
     }
 
     const data = await response.json();
-    return data.mood || "غير محدد";
+
+    // ✅ السيرفر الجديد  const data = await response.json();
+
+// ✅ يدعم القديم والجديد ويمنع undefined
+const finalMood =
+  data.finalMood || data.mood || data.label || "غير محدد";
+
+const confidence =
+  (typeof data.confidence === "number" ? data.confidence :
+   typeof data.score === "number" ? data.score : 0);
+
+const probabilities =
+  data.probabilities || data.probs || {};
+
+return { finalMood, confidence, probabilities };
+
   } catch (error) {
     console.error("AI Server Error:", error);
-    return "⚠️ فشل في الاتصال بالسيرفر";
+    return {
+      finalMood: "⚠️ فشل في الاتصال بالسيرفر",
+      confidence: 0,
+      probabilities: {},
+    };
   }
 }
 
@@ -134,7 +153,8 @@ async function saveTodayEntry() {
     saveBtn.disabled = true;
     saveBtn.textContent = "جاري التحليل والحفظ...";
 
-    const moodResult = await runLocalAnalysis(text);
+    const analysis = await runLocalAnalysis(text);
+    const moodResult = analysis.finalMood;
     const today = isoToday();
 
     await firebase
@@ -143,19 +163,29 @@ async function saveTodayEntry() {
       .doc(user.uid)
       .collection("entries")
       .doc(today) // ملاحظة: مذكرة واحدة لكل يوم
-      .set({
-        text,
-        rating: selectedRating,
-        words: wordCount(text),
-        finalMood: moodResult, // مثال: "حزين 😔"
-        savedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      .set(
+        {
+          text,
+          rating: selectedRating,
+          words: wordCount(text),
+          finalMood: moodResult, // مثال: "حزين 😔"
 
-    showJournalStatus(`تم الحفظ والتحليل بنجاح! نتيجتك: ${moodResult}`, "success");
+          // ✅ ADDED (بدون تغيير أي شيء ثاني)
+          confidence: analysis.confidence,
+          probs: analysis.probabilities,
+
+          savedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }, // ✅ ADDED
+      );
+
+    showJournalStatus(
+      `تم الحفظ والتحليل بنجاح! نتيجتك: ${moodResult}`,
+      "success",
+    );
     note.value = "";
     selectedRating = 0;
     initRating();
-
   } catch (err) {
     console.error("Save Error:", err);
     showJournalStatus("حدثت مشكلة أثناء الحفظ.", "error");
@@ -187,7 +217,6 @@ async function clearTodayEntry() {
     if (note) note.value = "";
     selectedRating = 0;
     initRating();
-
   } catch (err) {
     console.error("Delete Error:", err);
     showJournalStatus("تعذر مسح مذكرة اليوم.", "error");
@@ -272,7 +301,6 @@ async function openAllEntriesModal() {
 
     html += `</div>`;
     viewContent.innerHTML = html;
-
   } catch (err) {
     console.error("Load entries error:", err);
     viewContent.innerHTML = `
@@ -293,5 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
   clearTodayBtn?.addEventListener("click", clearTodayEntry);
 
   // زر "عرض كل المذكرات"
-  document.getElementById("showAll")?.addEventListener("click", openAllEntriesModal);
+  document
+    .getElementById("showAll")
+    ?.addEventListener("click", openAllEntriesModal);
 });

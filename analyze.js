@@ -1,4 +1,4 @@
-console.log("✅ analyze.js v4 loaded (premium)");
+console.log("✅ analyze.js v5 loaded (percentage by days + recommendations)");
 
 let chartInstance = null;
 
@@ -15,6 +15,7 @@ const MOOD_IMAGES = {
   "غير محدد":
     "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='50%' y='50%' font-size='40' text-anchor='middle' dominant-baseline='middle'>❔</text></svg>"
 };
+
 /* =========================
    Personalized Recommendations
 ========================= */
@@ -109,6 +110,7 @@ const RECOMMENDATIONS = {
 
 function cleanMood(m) {
   if (!m || typeof m !== "string") return "غير محدد";
+  // ياخذ أول كلمة فقط (يشيل الإيموجي لو موجود)
   return m.trim().split(/\s+/)[0];
 }
 
@@ -165,10 +167,10 @@ function animateCount(el, to, duration = 600) {
 
   requestAnimationFrame(step);
 }
-function showRecommendations(todayMood, weeklyMood, daysLabel) {
-  // عندك normalizeMood جاهز، فنستخدمه بدل MOOD_MAPPING
+
+function showRecommendations(todayMood, periodMood, daysLabel) {
   const today = normalizeMood(todayMood || "غير محدد");
-  const week  = normalizeMood(weeklyMood || "غير محدد");
+  const period = normalizeMood(periodMood || "غير محدد");
 
   const rec = RECOMMENDATIONS[today] || RECOMMENDATIONS["غير محدد"];
 
@@ -186,17 +188,17 @@ function showRecommendations(todayMood, weeklyMood, daysLabel) {
 
   if (weekEl) {
     const label = daysLabel || "الفترة";
-    weekEl.textContent = `نمط ${label} الغالب: ${week}`;
+    weekEl.textContent = `نمط ${label} الغالب: ${period}`;
   }
 }
 
 async function loadAnalyzedData(days) {
-  const totalScores = {};
-  const historyList = [];
-  let totalWords = 0;
+  const entryCounts = {};   // ✅ عدد الأيام لكل شعور
+  const historyList = [];   // ✅ سجل الأيام
+  let totalWords = 0;       // (اختياري - لو تحتاجينه لاحقًا)
 
   const user = firebase.auth().currentUser;
-  if (!user) return { totalScores, historyList, totalWords };
+  if (!user) return { entryCounts, historyList, totalWords };
 
   const now = new Date();
   const start = new Date();
@@ -224,24 +226,25 @@ async function loadAnalyzedData(days) {
     const words = Number(data.words || 0);
     totalWords += words;
 
-    totalScores[mood] = (totalScores[mood] || 0) + (words || 1);
+    // ✅ كل مذكرة/يوم = 1
+    entryCounts[mood] = (entryCounts[mood] || 0) + 1;
+
     historyList.push({ date, dominant: mood });
   });
 
-  return { totalScores, historyList, totalWords };
+  return { entryCounts, historyList, totalWords };
 }
 
 function ensureChart(canvas) {
   if (!canvas || typeof Chart === "undefined") return null;
 
-  // لو أول مرة: أنشئ chart
   if (!chartInstance) {
     chartInstance = new Chart(canvas, {
       type: "bar",
       data: {
         labels: [],
         datasets: [{
-          label: "النسبة المئوية للكلمات",
+          label: "النسبة المئوية للأيام", // ✅ حسب الأيام
           data: [],
           backgroundColor: [],
           borderRadius: 10,
@@ -251,9 +254,7 @@ function ensureChart(canvas) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-
         animation: { duration: 900, easing: "easeOutQuart" },
-
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -263,9 +264,7 @@ function ensureChart(canvas) {
           }
         },
         scales: {
-          x: {
-            ticks: { font: { size: 12 } }
-          },
+          x: { ticks: { font: { size: 12 } } },
           y: {
             beginAtZero: true,
             max: 100,
@@ -275,19 +274,25 @@ function ensureChart(canvas) {
       }
     });
   }
+
   return chartInstance;
 }
 
 async function renderDashboard(days) {
-  const { totalScores, historyList, totalWords } = await loadAnalyzedData(days);
+  const { entryCounts, historyList } = await loadAnalyzedData(days);
 
-  // ---- Prepare chart data with stable order
-  const orderedLabels = MOOD_ORDER.filter(m => totalScores[m] != null && totalScores[m] > 0);
+  // ✅ إجمالي الأيام/المذكرات في الفترة
+  const totalEntries = historyList.length;
+
+  // ترتيب ثابت، لكن فقط اللي ظهر فعليًا
+  const orderedLabels = MOOD_ORDER.filter(m => (entryCounts[m] || 0) > 0);
   const labels = orderedLabels.length ? orderedLabels : [];
 
+  // ✅ النسب حسب عدد الأيام
   const values = labels.map(m =>
-    totalWords ? Math.round((totalScores[m] / totalWords) * 100) : 0
+    totalEntries ? Math.round(((entryCounts[m] || 0) / totalEntries) * 100) : 0
   );
+
   const colors = labels.map(moodColor);
 
   // ---- Chart
@@ -303,35 +308,29 @@ async function renderDashboard(days) {
     }
   } else {
     setChartEmptyState(false);
-
     if (chart) {
       chart.data.labels = labels;
       chart.data.datasets[0].data = values;
       chart.data.datasets[0].backgroundColor = colors;
-
-      // ✅ تحديث ناعم بدل destroy
       chart.update();
     }
   }
 
-  // ---- Top Moods
+  // ---- Top Moods (حسب عدد الأيام)
   const topEl = document.getElementById("topMoods");
   if (topEl) {
     topEl.innerHTML = "";
 
-    const sorted = Object.entries(totalScores)
+    const sorted = Object.entries(entryCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
-
-    const total = Object.values(totalScores).reduce((a, b) => a + b, 0);
 
     if (!sorted.length) {
       topEl.innerHTML = `<p class="an-subtext">لا توجد بيانات.</p>`;
     } else {
-      sorted.forEach(([m, s]) => {
-        const pct = total ? Math.round((s / total) * 100) : 0;
+      sorted.forEach(([m, count]) => {
+        const pct = totalEntries ? Math.round((count / totalEntries) * 100) : 0;
 
-        // عنصر فيه رقم متحرك
         const row = document.createElement("div");
         row.className = "an-metric";
         row.innerHTML = `
@@ -348,14 +347,14 @@ async function renderDashboard(days) {
       });
     }
   }
-  // ---- Recommendations (today + period dominant)
-  let weeklyDominant = "غير محدد";
-  const weekSorted = Object.entries(totalScores).sort((a, b) => b[1] - a[1]);
-  if (weekSorted.length) weeklyDominant = weekSorted[0][0];
+
+  // ---- Recommendations (today + dominant period) ✅ حسب الأيام
+  let periodDominant = "غير محدد";
+  const periodSorted = Object.entries(entryCounts).sort((a, b) => b[1] - a[1]);
+  if (periodSorted.length) periodDominant = periodSorted[0][0];
 
   let todayMood = "غير محدد";
   if (historyList.length) {
-    // historyList عندك فيه { date, dominant }
     const latest = historyList.slice().sort((a, b) => a.date.localeCompare(b.date)).pop();
     todayMood = latest?.dominant || "غير محدد";
   }
@@ -365,13 +364,15 @@ async function renderDashboard(days) {
     (days === 30 ? "آخر 30 يوم" :
     (days === 90 ? "آخر 90 يوم" : "الفترة"));
 
-  showRecommendations(todayMood, weeklyDominant, daysLabel);
+  showRecommendations(todayMood, periodDominant, daysLabel);
+
   // ---- List (latest first)
   const listEl = document.getElementById("moodList");
   if (listEl) {
     listEl.innerHTML = "";
 
     historyList
+      .slice()
       .sort((a, b) => a.date.localeCompare(b.date))
       .reverse()
       .forEach(item => {
@@ -404,6 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const lbl = document.getElementById("analysisRange");
       if (lbl) lbl.textContent = btn.textContent;
 
+      // (اختياري) أنيميشن بسيط لو عندك كلاس/كارد ثاني
       const card = document.querySelector(".an-card--primary2");
       if (card) {
         card.classList.add("pulse");
