@@ -88,19 +88,19 @@ async function runLocalAnalysis(text) {
 
     // ✅ السيرفر الجديد  const data = await response.json();
 
-// ✅ يدعم القديم والجديد ويمنع undefined
-const finalMood =
-  data.finalMood || data.mood || data.label || "غير محدد";
+    // ✅ يدعم القديم والجديد ويمنع undefined
+    const finalMood = data.finalMood || data.mood || data.label || "غير محدد";
 
-const confidence =
-  (typeof data.confidence === "number" ? data.confidence :
-   typeof data.score === "number" ? data.score : 0);
+    const confidence =
+      typeof data.confidence === "number"
+        ? data.confidence
+        : typeof data.score === "number"
+          ? data.score
+          : 0;
 
-const probabilities =
-  data.probabilities || data.probs || {};
+    const probabilities = data.probabilities || data.probs || {};
 
-return { finalMood, confidence, probabilities };
-
+    return { finalMood, confidence, probabilities };
   } catch (error) {
     console.error("AI Server Error:", error);
     return {
@@ -311,7 +311,188 @@ async function openAllEntriesModal() {
   }
 }
 
-/* ---------- 7) تهيئة الصفحة وربط الأزرار ---------- */
+/* ============================================================
+   ✅ 7) Achievements (زر عرض الإنجازات + حساب الستريك + عرض البطاقات)
+   - لا يحذف أي شيء من كودك، فقط إضافة كاملة
+============================================================ */
+
+function parseISODate(id) {
+  // id = "YYYY-MM-DD"
+  const [y, m, d] = String(id).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function daysBetween(a, b) {
+  const ms = 24 * 60 * 60 * 1000;
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((db - da) / ms);
+}
+
+async function loadAllEntriesDocs(uid) {
+  const snap = await firebase
+    .firestore()
+    .collection("users")
+    .doc(uid)
+    .collection("entries")
+    .get();
+
+  const docs = [];
+  snap.forEach((d) => docs.push(d));
+  // sort ASC by date (needed for streak calc)
+  docs.sort((a, b) => a.id.localeCompare(b.id));
+  return docs;
+}
+
+function computeStreaks(dateIdsAsc) {
+  // dateIdsAsc: ascending
+  if (!dateIdsAsc.length) return { current: 0, best: 0 };
+
+  // Best streak
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < dateIdsAsc.length; i++) {
+    const prev = parseISODate(dateIdsAsc[i - 1]);
+    const cur = parseISODate(dateIdsAsc[i]);
+    const diff = daysBetween(prev, cur);
+    if (diff === 1) run++;
+    else run = 1;
+    if (run > best) best = run;
+  }
+
+  // Current streak: count back from last saved day, break when gap
+  let current = 1;
+  for (let i = dateIdsAsc.length - 1; i > 0; i--) {
+    const prev = parseISODate(dateIdsAsc[i - 1]);
+    const cur = parseISODate(dateIdsAsc[i]);
+    if (daysBetween(prev, cur) === 1) current++;
+    else break;
+  }
+
+  return { current, best };
+}
+
+function renderAchievements(listEl, stats) {
+  if (!listEl) return;
+
+  const achvs = [
+    {
+      key: "first",
+      title: "أول تدوينة",
+      desc: "اكتب أول مذكرة لك.",
+      unlocked: stats.totalEntries >= 1,
+      badge: stats.totalEntries >= 1 ? "مفتوح" : "مغلق",
+      icon: "✍️",
+    },
+    {
+      key: "streak3",
+      title: "سلسلة ٣ أيام",
+      desc: "اكتب 3 أيام متتالية.",
+      unlocked: stats.bestStreak >= 3,
+      badge: stats.bestStreak >= 3 ? "مفتوح" : `${Math.min(stats.bestStreak, 3)}/3`,
+      icon: "🔥",
+    },
+    {
+      key: "streak7",
+      title: "سلسلة أسبوع",
+      desc: "اكتب 7 أيام متتالية.",
+      unlocked: stats.bestStreak >= 7,
+      badge: stats.bestStreak >= 7 ? "مفتوح" : `${Math.min(stats.bestStreak, 7)}/7`,
+      icon: "🏆",
+    },
+    {
+      key: "words300",
+      title: "300 كلمة",
+      desc: "اكتب 300 كلمة إجمالاً.",
+      unlocked: stats.totalWords >= 300,
+      badge: stats.totalWords >= 300 ? "مفتوح" : `${Math.min(stats.totalWords, 300)}/300`,
+      icon: "📝",
+    },
+    {
+      key: "fiveStar",
+      title: "يوم 5 نجوم",
+      desc: "قيّم يومك 5/5 مرة واحدة.",
+      unlocked: stats.hasFiveStar,
+      badge: stats.hasFiveStar ? "مفتوح" : "مغلق",
+      icon: "⭐",
+    },
+  ];
+
+  listEl.innerHTML = achvs
+    .map((a) => {
+      const unlockedClass = a.unlocked ? "is-unlocked" : "";
+      return `
+        <div class="achv-card ${unlockedClass}">
+          <div class="achv-content">
+            <div class="achv-icon">${a.icon}</div>
+            <div class="achv-text">
+              <strong>${a.title}</strong>
+              <small>${a.desc}</small>
+            </div>
+          </div>
+          <div class="achv-badge">${a.badge}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function initAchievementsUI() {
+  const btn = document.getElementById("showAchv");
+  const box = document.getElementById("achievements");
+  const list = document.getElementById("achvList");
+
+  if (!btn || !box || !list) return;
+
+  btn.addEventListener("click", async () => {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      showJournalStatus("يرجى تسجيل الدخول أولاً", "error");
+      return;
+    }
+
+    // Toggle open/close
+    const willOpen = box.hidden === true;
+    box.hidden = !willOpen;
+    if (!willOpen) return;
+
+    // Loading state
+    list.innerHTML = `<div style="padding:8px;color:#666">جاري تحميل الإنجازات...</div>`;
+
+    try {
+      const docs = await loadAllEntriesDocs(user.uid);
+      const dateIds = docs.map((d) => d.id);
+
+      const totalEntries = docs.length;
+      const totalWords = docs.reduce(
+        (sum, d) => sum + (Number(d.data()?.words) || 0),
+        0,
+      );
+      const hasFiveStar = docs.some((d) => Number(d.data()?.rating) === 5);
+
+      const streaks = computeStreaks(dateIds);
+
+      // تحديث كرت "سلسلة الكتابة" الموجود عندك (اختياري لكن مفيد)
+      const curStreakEl = document.getElementById("curStreak");
+      const bestStreakEl = document.getElementById("bestStreak");
+      if (curStreakEl) curStreakEl.textContent = String(streaks.current);
+      if (bestStreakEl) bestStreakEl.textContent = String(streaks.best);
+
+      renderAchievements(list, {
+        totalEntries,
+        totalWords,
+        hasFiveStar,
+        currentStreak: streaks.current,
+        bestStreak: streaks.best,
+      });
+    } catch (e) {
+      console.error("Achievements error:", e);
+      list.innerHTML = `<div style="padding:8px;color:#b00020">تعذر تحميل الإنجازات.</div>`;
+    }
+  });
+}
+
+/* ---------- 8) تهيئة الصفحة وربط الأزرار ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   if (todayEl) todayEl.textContent = isoToday();
 
@@ -324,4 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("showAll")
     ?.addEventListener("click", openAllEntriesModal);
+
+  // ✅ زر "عرض الإنجازات"
+  initAchievementsUI();
 });

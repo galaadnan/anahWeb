@@ -4508,3 +4508,6 @@ canvas#moodChart { transition: opacity .25s ease; }
 .rec-section h4{
   margin: 12px 0 6px;
 }
+.bg-blobs, .bg-blobs * {
+  pointer-events: none !important;
+}
