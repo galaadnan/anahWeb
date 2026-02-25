@@ -6,6 +6,7 @@ venv/
 __MACOSX/
 
 # Heavy AI model checkpoints (keep them LOCAL only)
+ai model/
 GP/ai model/models/
 GP/ai model/*.pt
 GP/ai model/*.bin
