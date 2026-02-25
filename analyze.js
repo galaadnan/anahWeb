@@ -1,4 +1,4 @@
-console.log("✅ analyze.js v5 loaded (percentage by days + recommendations)");
+console.log("✅ analyze.js v6 loaded (percentage by days + WOW recommendations + why button)");
 
 let chartInstance = null;
 
@@ -17,7 +17,7 @@ const MOOD_IMAGES = {
 };
 
 /* =========================
-   Personalized Recommendations
+   Legacy Personalized Recommendations (kept)
 ========================= */
 const RECOMMENDATIONS = {
   "حزين": {
@@ -32,7 +32,6 @@ const RECOMMENDATIONS = {
       "دلّل نفسك بشيء بسيط تحبه."
     ]
   },
-
   "قلق": {
     quote: "اهدأ… أنت تبذل ما بوسعك.",
     quick: [
@@ -45,7 +44,6 @@ const RECOMMENDATIONS = {
       "نم مبكرًا أو خفّف المنبهات."
     ]
   },
-
   "غاضب": {
     quote: "التوقف لحظة قد يمنع ندمًا طويلًا.",
     quick: [
@@ -58,7 +56,6 @@ const RECOMMENDATIONS = {
       "غيّر الجو من حولك."
     ]
   },
-
   "سعيد": {
     quote: "استمتع بهذه اللحظة، فهي لك.",
     quick: [
@@ -70,7 +67,6 @@ const RECOMMENDATIONS = {
       "خطّط لشيء جميل غدًا."
     ]
   },
-
   "متعب": {
     quote: "الراحة ليست كسلًا، بل حاجة.",
     quick: [
@@ -83,7 +79,6 @@ const RECOMMENDATIONS = {
       "جهّز مهام الغد ببساطة."
     ]
   },
-
   "لا بأس": {
     quote: "ثباتك اليوم إنجاز بحد ذاته.",
     quick: [
@@ -96,7 +91,6 @@ const RECOMMENDATIONS = {
       "سوِ شيء تحبه حتى لو صغير."
     ]
   },
-
   "غير محدد": {
     quote: "ابدأ بخطوة صغيرة… وستوضح الصورة.",
     quick: [
@@ -108,10 +102,93 @@ const RECOMMENDATIONS = {
   }
 };
 
+/* ============================================================
+   ✅ WOW Recommendations (evidence-backed + dynamic + clean UI)
+============================================================ */
+
+const EVIDENCE_LIBRARY = [
+  {
+    id: "BREATH_4_6",
+    forMoods: ["قلق","غاضب","حزين","متعب","لا بأس","غير محدد"],
+    title: "تنفّس بطيء (4/6)",
+    steps: ["خذ شهيق 4 ثوانٍ", "ازفر 6 ثوانٍ", "كرر لمدة دقيقتين"],
+    refsShort: ["تنفس بطيء (HRV)"],
+    refsFull: ["Russo et al., 2017 — slow breathing/HRV regulation"]
+  },
+  {
+    id: "GROUND_54321",
+    forMoods: ["قلق","غاضب","غير محدد"],
+    title: "تهدئة بالحواس (5-4-3-2-1)",
+    steps: ["5 أشياء تراها", "4 تلمسها", "3 تسمعها", "2 تشمها", "1 تتذوقها"],
+    refsShort: ["Grounding (5-4-3-2-1)"],
+    refsFull: ["Clinical coping technique widely used for anxiety grounding"]
+  },
+  {
+    id: "WRITE_3MIN",
+    forMoods: ["حزين","قلق","غير محدد","لا بأس"],
+    title: "كتابة تعبيرية 3 دقائق",
+    steps: ["اكتب 3 دقائق بلا توقف", "لا تهتم بالصياغة", "اختم: (ما أحتاجه الآن هو...)"],
+    refsShort: ["كتابة تعبيرية"],
+    refsFull: ["Pennebaker tradition; Niles et al., 2013 — expressive writing review"]
+  },
+  {
+    id: "BA_ONE_STEP",
+    forMoods: ["حزين","متعب","لا بأس"],
+    title: "خطوة واحدة (تنشيط سلوكي)",
+    steps: ["اختر نشاط 5–10 دقائق", "ابدأ بدون مثالية", "لاحظ شعورك بعده"],
+    refsShort: ["تنشيط سلوكي"],
+    refsFull: ["Cuijpers et al., 2007 — Behavioral Activation meta-analysis"]
+  },
+  {
+    id: "MOVE_3MIN",
+    forMoods: ["حزين","غاضب","قلق","متعب","لا بأس"],
+    title: "تحريك الجسم 3 دقائق",
+    steps: ["قف وتمدد 30 ثانية", "امشِ 2 دقيقة", "اشرب ماء في النهاية"],
+    refsShort: ["نشاط خفيف"],
+    refsFull: ["Light activity can support mood regulation (general behavioral guidance)"]
+  },
+  {
+    id: "SLEEP_LIGHT",
+    forMoods: ["متعب","قلق"],
+    title: "تهيئة نوم لطيفة",
+    steps: ["خفّف الإضاءة 30 دقيقة", "أوقف الإشعارات", "تنفّس ببطء دقيقتين"],
+    refsShort: ["Sleep hygiene"],
+    refsFull: ["CBT-I / sleep hygiene principles (clinical guidance)"]
+  }
+];
+
+const WOW_TEMPLATES = {
+  intro: [
+    "خلّينا ناخذها بهدوء 🤍",
+    "خطوة صغيرة اليوم تكفي ✨",
+    "مو لازم تكونين كاملة… بس متقدّمة 🌿",
+    "خلّينا نرتّبها مع بعض بدون ضغط."
+  ],
+  insight: [
+    (d) => `اليوم يبدو أنك أقرب إلى: ${d.todayMood}.`,
+    (d) => `في ${d.daysLabel}، الأكثر ظهورًا كان: ${d.periodDominant}${d.secondMood ? ` ثم ${d.secondMood}` : ""}.`,
+    (d) => d.volatility >= 60
+      ? "فيه تذبذب ملحوظ بين الأيام—خلّينا نركز على تهدئة وتنظيم بسيط."
+      : "النمط يبدو مستقر نسبيًا—خلّينا نعزز اللي يساعدك."
+  ],
+  focus: [
+    "خلّينا نختار تدخلين بسيطين: واحد سريع الآن وواحد لليوم.",
+    "الهدف مو تغيير كل شيء… بس تخفيف الشعور 10%."
+  ],
+  outro: [
+    "إذا ما ناسبك شيء… اختاري أبسط خطوة فقط.",
+    "جرّبي واحدة الآن، والباقي لاحقًا.",
+    "اللطف مع نفسك جزء من العلاج."
+  ]
+};
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function cleanMood(m) {
   if (!m || typeof m !== "string") return "غير محدد";
-  // ياخذ أول كلمة فقط (يشيل الإيموجي لو موجود)
-  return m.trim().split(/\s+/)[0];
+  return m.trim().split(/\s+/)[0]; // يشيل الإيموجي
 }
 
 function normalizeMood(raw) {
@@ -136,6 +213,54 @@ function isoDate(d) {
   return d.toISOString().split("T")[0];
 }
 
+function computeVolatility(historyList) {
+  const sorted = historyList.slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length <= 1) return 0;
+  let changes = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].dominant !== sorted[i - 1].dominant) changes++;
+  }
+  return Math.round((changes / (sorted.length - 1)) * 100);
+}
+
+function topTwoMoods(entryCounts) {
+  const arr = Object.entries(entryCounts).sort((a, b) => b[1] - a[1]);
+  return { first: arr[0]?.[0] || "غير محدد", second: arr[1]?.[0] || null };
+}
+
+function pickEvidenceForMood(mood, ctx) {
+  const m = normalizeMood(mood);
+  let pool = EVIDENCE_LIBRARY.filter(x => x.forMoods.includes(m));
+
+  // لو التذبذب عالي: أعطِ أولوية للتهدئة/النوم/grounding
+  if (ctx.volatility >= 60) {
+    const calmingPriority = new Set(["BREATH_4_6", "GROUND_54321", "SLEEP_LIGHT"]);
+    pool = pool.slice().sort((a, b) => (calmingPriority.has(b.id) ? 1 : 0) - (calmingPriority.has(a.id) ? 1 : 0));
+  }
+
+  const picked = [];
+  for (const item of pool) {
+    if (!picked.find(p => p.id === item.id)) picked.push(item);
+    if (picked.length >= 2) break;
+  }
+
+  if (!picked.length) picked.push(EVIDENCE_LIBRARY[0]);
+  if (picked.length === 1) picked.push(picked[0]);
+
+  return picked;
+}
+
+function buildWowQuote(ctx) {
+  const intro = pickRandom(WOW_TEMPLATES.intro);
+  const insight = pickRandom(WOW_TEMPLATES.insight)(ctx);
+  const focus = pickRandom(WOW_TEMPLATES.focus);
+  const outro = pickRandom(WOW_TEMPLATES.outro);
+  return `${intro} ${insight} ${focus} ${outro}`;
+}
+
+/* =========================
+   Chart empty state
+========================= */
 function setChartEmptyState(isEmpty, text = "لا توجد بيانات لهذه الفترة.") {
   const wrap = document.querySelector(".an-chart-wrap");
   if (!wrap) return;
@@ -168,34 +293,75 @@ function animateCount(el, to, duration = 600) {
   requestAnimationFrame(step);
 }
 
-function showRecommendations(todayMood, periodMood, daysLabel) {
+/* ============================================================
+   ✅ Recommendations renderer (clean look + why button)
+============================================================ */
+function showRecommendations(todayMood, periodMood, daysLabel, ctx = null) {
   const today = normalizeMood(todayMood || "غير محدد");
   const period = normalizeMood(periodMood || "غير محدد");
-
-  const rec = RECOMMENDATIONS[today] || RECOMMENDATIONS["غير محدد"];
 
   const qEl = document.getElementById("recQuote");
   const quickEl = document.getElementById("recQuick");
   const dailyEl = document.getElementById("recDaily");
   const weekEl = document.getElementById("recWeekNote");
 
-  // إذا الكارد مو موجود في HTML، لا نسوي شيء
   if (!qEl || !quickEl || !dailyEl) return;
 
-  qEl.textContent = `“${rec.quote}”`;
-  quickEl.innerHTML = rec.quick.map(item => `<li>${item}</li>`).join("");
-  dailyEl.innerHTML = rec.daily.map(item => `<li>${item}</li>`).join("");
+  const safeCtx = ctx || {
+    daysLabel: daysLabel || "الفترة",
+    todayMood: today,
+    periodDominant: period,
+    secondMood: null,
+    volatility: 0
+  };
 
+  // نص WOW
+  qEl.textContent = `“${buildWowQuote(safeCtx)}”`;
+
+  const picked = pickEvidenceForMood(today, safeCtx);
+  const first = picked[0];
+  const second = picked[1];
+
+  // قوائم خطوات
+  quickEl.innerHTML = first.steps.map(s => `<li>${s}</li>`).join("");
+  dailyEl.innerHTML = second.steps.map(s => `<li>${s}</li>`).join("");
+
+  // مراجع مختصرة + زر (Why)
   if (weekEl) {
-    const label = daysLabel || "الفترة";
-    weekEl.textContent = `نمط ${label} الغالب: ${period}`;
+    const v = safeCtx.volatility >= 60 ? "مرتفع" : (safeCtx.volatility >= 30 ? "متوسط" : "منخفض");
+    const shortRefs = [...new Set([...(first.refsShort || []), ...(second.refsShort || [])])].join(" · ");
+    const fullRefs = [...new Set([...(first.refsFull || []), ...(second.refsFull || [])])].join(" · ");
+
+    // نستخدم innerHTML عشان نخليها Chips + زر
+    weekEl.innerHTML = `
+      <span style="display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="rec-chip">نمط ${safeCtx.daysLabel}: ${period}</span>
+        ${safeCtx.secondMood ? `<span class="rec-chip">ثم: ${safeCtx.secondMood}</span>` : ""}
+        <span class="rec-chip">تذبذب: ${v}</span>
+        <span class="rec-chip">${shortRefs}</span>
+        <button type="button" id="whyRecBtn" class="rec-why-btn">لماذا هذه التوصية؟</button>
+      </span>
+      <div id="whyRecBox" class="rec-why-box" hidden>
+        <div class="rec-why-title">اعتمدنا على (تقنيات/مراجع):</div>
+        <div class="rec-why-body">${fullRefs}</div>
+      </div>
+    `;
+
+    const whyBtn = document.getElementById("whyRecBtn");
+    const whyBox = document.getElementById("whyRecBox");
+    if (whyBtn && whyBox) {
+      whyBtn.onclick = () => (whyBox.hidden = !whyBox.hidden);
+    }
   }
 }
 
+/* =========================
+   Firestore loader
+========================= */
 async function loadAnalyzedData(days) {
   const entryCounts = {};   // ✅ عدد الأيام لكل شعور
   const historyList = [];   // ✅ سجل الأيام
-  let totalWords = 0;       // (اختياري - لو تحتاجينه لاحقًا)
+  let totalWords = 0;
 
   const user = firebase.auth().currentUser;
   if (!user) return { entryCounts, historyList, totalWords };
@@ -226,9 +392,7 @@ async function loadAnalyzedData(days) {
     const words = Number(data.words || 0);
     totalWords += words;
 
-    // ✅ كل مذكرة/يوم = 1
     entryCounts[mood] = (entryCounts[mood] || 0) + 1;
-
     historyList.push({ date, dominant: mood });
   });
 
@@ -244,7 +408,7 @@ function ensureChart(canvas) {
       data: {
         labels: [],
         datasets: [{
-          label: "النسبة المئوية للأيام", // ✅ حسب الأيام
+          label: "النسبة المئوية للأيام",
           data: [],
           backgroundColor: [],
           borderRadius: 10,
@@ -278,17 +442,16 @@ function ensureChart(canvas) {
   return chartInstance;
 }
 
+/* =========================
+   Main render
+========================= */
 async function renderDashboard(days) {
   const { entryCounts, historyList } = await loadAnalyzedData(days);
-
-  // ✅ إجمالي الأيام/المذكرات في الفترة
   const totalEntries = historyList.length;
 
-  // ترتيب ثابت، لكن فقط اللي ظهر فعليًا
   const orderedLabels = MOOD_ORDER.filter(m => (entryCounts[m] || 0) > 0);
   const labels = orderedLabels.length ? orderedLabels : [];
 
-  // ✅ النسب حسب عدد الأيام
   const values = labels.map(m =>
     totalEntries ? Math.round(((entryCounts[m] || 0) / totalEntries) * 100) : 0
   );
@@ -316,7 +479,7 @@ async function renderDashboard(days) {
     }
   }
 
-  // ---- Top Moods (حسب عدد الأيام)
+  // ---- Top Moods
   const topEl = document.getElementById("topMoods");
   if (topEl) {
     topEl.innerHTML = "";
@@ -348,7 +511,7 @@ async function renderDashboard(days) {
     }
   }
 
-  // ---- Recommendations (today + dominant period) ✅ حسب الأيام
+  // ---- Recommendations
   let periodDominant = "غير محدد";
   const periodSorted = Object.entries(entryCounts).sort((a, b) => b[1] - a[1]);
   if (periodSorted.length) periodDominant = periodSorted[0][0];
@@ -364,7 +527,16 @@ async function renderDashboard(days) {
     (days === 30 ? "آخر 30 يوم" :
     (days === 90 ? "آخر 90 يوم" : "الفترة"));
 
-  showRecommendations(todayMood, periodDominant, daysLabel);
+  const vol = computeVolatility(historyList);
+  const top2 = topTwoMoods(entryCounts);
+
+  showRecommendations(todayMood, periodDominant, daysLabel, {
+    daysLabel,
+    todayMood: normalizeMood(todayMood),
+    periodDominant: normalizeMood(periodDominant),
+    secondMood: top2.second ? normalizeMood(top2.second) : null,
+    volatility: vol
+  });
 
   // ---- List (latest first)
   const listEl = document.getElementById("moodList");
@@ -392,8 +564,10 @@ async function renderDashboard(days) {
   }
 }
 
+/* =========================
+   Init
+========================= */
 document.addEventListener("DOMContentLoaded", () => {
-  // Buttons
   document.querySelectorAll(".an-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".an-chip").forEach(b => b.classList.remove("is-active"));
@@ -405,7 +579,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const lbl = document.getElementById("analysisRange");
       if (lbl) lbl.textContent = btn.textContent;
 
-      // (اختياري) أنيميشن بسيط لو عندك كلاس/كارد ثاني
       const card = document.querySelector(".an-card--primary2");
       if (card) {
         card.classList.add("pulse");
