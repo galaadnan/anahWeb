@@ -322,7 +322,7 @@ function initTaskSystem() {
 }
 
 /* ------------------------------------------------------------
-  5) Chatbot – improved + simple safety
+  5) Chatbot – Connected to Backend
 ------------------------------------------------------------ */
 function initChatbot() {
   const chatbotBtn = $("chatbotBtn");
@@ -338,6 +338,7 @@ function initChatbot() {
     chatWindow.classList.add("is-open");
     setTimeout(() => inputEl.focus(), 80);
   }
+
   function closeChat() {
     chatWindow.classList.remove("is-open");
   }
@@ -354,48 +355,45 @@ function initChatbot() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  const replies = [
-    "أسمعك 🤍.. تبغين تحكي لي أكثر عن اللي صار؟",
-    "مفهوم… وش أكثر شيء متعبك اليوم؟",
-    "خلّينا نمسكها خطوة خطوة… وش تحتاجين الآن؟",
-    "حتى لو اليوم كان ثقيل، وجودك هنا ومحاولتك مهمّة جدًا.",
-    "جربي نفس عميق: شهيق ٤ ثواني… زفير ٦ ثواني 🌿"
-  ];
-
-  function looksHighRisk(t) {
-    const s = t.toLowerCase();
-    return (
-      s.includes("انتح") ||
-      s.includes("اذي نفسي") ||
-      s.includes("أؤذي نفسي") ||
-      s.includes("ابي اموت") ||
-      s.includes("أبي أموت")
-    );
-  }
-
-  function botReply(userText) {
-    if (!userText.trim()) return "اكتبي لي جملة بسيطة عن شعورك 🤍";
-
-    if (looksHighRisk(userText)) {
-      return "أنا آسف إنك تمرّين بشيء مؤلم 🤍 إذا كنتِ في خطر الآن أو تفكرين بإيذاء نفسك، تواصلي فورًا مع شخص قريب منك أو رقم الطوارئ في بلدك. إذا تبين، قولي لي في أي دولة أنتِ عشان أعطيك أرقام مساعدة مناسبة.";
-    }
-
-    return replies[Math.floor(Math.random() * replies.length)];
-  }
-
-  function handleSend() {
+  async function handleSend() {
     const text = inputEl.value.trim();
     if (!text) return;
 
     appendMessage(text, "user");
     inputEl.value = "";
 
-    setTimeout(() => appendMessage(botReply(text), "bot"), 350);
+    const loadingMsg = document.createElement("div");
+    loadingMsg.classList.add("message", "bot-msg");
+    loadingMsg.textContent = "...جاري التفكير 🤍";
+    messagesEl.appendChild(loadingMsg);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await response.json();
+
+      loadingMsg.remove();
+      appendMessage(data.reply || "🤍", "bot");
+
+    } catch (error) {
+      loadingMsg.remove();
+      appendMessage("حدث خطأ في الاتصال بالسيرفر 💔", "bot");
+      console.error(error);
+    }
   }
 
+  // 🔥 هنا الربط المهم
   sendBtn.addEventListener("click", handleSend);
+
   inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSend();
     }
