@@ -235,7 +235,10 @@ function pickEvidenceForMood(mood, ctx) {
   // لو التذبذب عالي: أعطِ أولوية للتهدئة/النوم/grounding
   if (ctx.volatility >= 60) {
     const calmingPriority = new Set(["BREATH_4_6", "GROUND_54321", "SLEEP_LIGHT"]);
-    pool = pool.slice().sort((a, b) => (calmingPriority.has(b.id) ? 1 : 0) - (calmingPriority.has(a.id) ? 1 : 0));
+    pool = pool.slice().sort(
+      (a, b) =>
+        (calmingPriority.has(b.id) ? 1 : 0) - (calmingPriority.has(a.id) ? 1 : 0)
+    );
   }
 
   const picked = [];
@@ -332,7 +335,6 @@ function showRecommendations(todayMood, periodMood, daysLabel, ctx = null) {
     const shortRefs = [...new Set([...(first.refsShort || []), ...(second.refsShort || [])])].join(" · ");
     const fullRefs = [...new Set([...(first.refsFull || []), ...(second.refsFull || [])])].join(" · ");
 
-    // نستخدم innerHTML عشان نخليها Chips + زر
     weekEl.innerHTML = `
       <span style="display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span class="rec-chip">نمط ${safeCtx.daysLabel}: ${period}</span>
@@ -568,12 +570,23 @@ async function renderDashboard(days) {
    Init
 ========================= */
 document.addEventListener("DOMContentLoaded", () => {
+  // ✅ اجعلي 90 يوم هو الافتراضي في الواجهة
+  const chip90 = document.querySelector('.an-chip[data-range="90"]');
+  if (chip90) {
+    document.querySelectorAll(".an-chip").forEach(b => b.classList.remove("is-active"));
+    chip90.classList.add("is-active");
+
+    const lbl = document.getElementById("analysisRange");
+    if (lbl) lbl.textContent = chip90.textContent;
+  }
+
   document.querySelectorAll(".an-chip").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".an-chip").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
 
-      const days = parseInt(btn.dataset.range, 10) || 7;
+      // ✅ fallback صار 90 بدل 7
+      const days = parseInt(btn.dataset.range, 10) || 90;
       renderDashboard(days);
 
       const lbl = document.getElementById("analysisRange");
@@ -587,5 +600,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  firebase.auth().onAuthStateChanged(() => renderDashboard(7));
+  // ✅ افتراضي 90 يوم عند فتح الصفحة
+  firebase.auth().onAuthStateChanged(() => renderDashboard(90));
 });
