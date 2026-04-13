@@ -4623,3 +4623,124 @@ canvas#moodChart { transition: opacity .25s ease; }
   line-height:1.7;
 }
 
+/* تنسيقات محرر النصوص الجديد */
+.rich-editor-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+  background: #fdfdfd;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #eaeaea;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.editor-toolbar button, .toolbar-btn {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  color: #555;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.editor-toolbar button:hover, .toolbar-btn:hover {
+  background: #eef2f5;
+  color: #333;
+  border-color: #ccc;
+}
+
+.color-picker-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.color-picker-wrapper input[type="color"] {
+  border: none;
+  background: none;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 5px;
+}
+
+.emoji-wrapper {
+  position: relative;
+}
+
+.emoji-palette {
+  position: absolute;
+  top: 115%;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+
+.emoji-palette span {
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px;
+  text-align: center;
+}
+
+.emoji-palette span:hover {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.rich-textarea {
+  min-height: 180px;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  padding: 15px;
+  background: white;
+  outline: none;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+
+.rich-textarea:empty:before {
+  content: attr(placeholder);
+  color: #999;
+  pointer-events: none;
+  display: block;
+}
+
+.rich-textarea img {
+  max-width: 200px; /* هذا بيصغر العرض */
+  max-height: 200px; /* وهذا بيصغر الطول */
+  object-fit: cover; /* عشان الصورة تطلع مربعة ومرتبة بدون ما تتمطط */
+  border-radius: 12px;
+  margin: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: inline-block;
+}
+/* إخفاء قائمة الإيموجي بشكل قاطع إذا كانت مقفلة */
+.emoji-palette[hidden] {
+  display: none !important;
+}
