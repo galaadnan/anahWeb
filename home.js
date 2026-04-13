@@ -85,7 +85,6 @@ function initMoodButtons() {
   const buttons = document.querySelectorAll(".mood-buttons .mood");
   if (!buttons.length) return;
 
-  // Create a small hint if not existing
   let hint = document.querySelector(".mood-save-hint");
   if (!hint) {
     hint = document.createElement("p");
@@ -95,28 +94,75 @@ function initMoodButtons() {
     if (card) card.appendChild(hint);
   }
 
+  function isoToday() {
+    return new Date().toISOString().split("T")[0];
+  }
+
   function setHint(moodName) {
     hint.textContent = `سجلنا شعورك الآن كـ: ${moodName} 💛 يمكنك تغييره في أي وقت.`;
   }
 
-  // Restore
+  async function saveMoodHistory(moodName) {
+    const today = isoToday();
+
+    localStorage.setItem("anah_current_mood", moodName);
+
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem("anah_emoji_history") || "[]");
+    } catch {
+      history = [];
+    }
+
+    const filtered = history.filter(item => item.date !== today);
+    filtered.push({
+      date: today,
+      mood: moodName,
+      source: "emoji",
+      updatedAt: Date.now()
+    });
+
+    localStorage.setItem("anah_emoji_history", JSON.stringify(filtered));
+
+    if (typeof firebase !== "undefined") {
+      const user = firebase.auth().currentUser;
+      if (user) {
+        await firebase.firestore()
+          .collection("users").doc(user.uid)
+          .collection("emoji_moods")
+          .doc(today)
+          .set({
+            mood: moodName,
+            source: "emoji",
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+      }
+    }
+  }
+
   const saved = localStorage.getItem("anah_current_mood");
   if (saved) setHint(saved);
 
   buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const moodName = btn.dataset.mood || "غير محدد";
-      localStorage.setItem("anah_current_mood", moodName);
 
-      // simple bounce
+      buttons.forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+
       btn.classList.add("pulse");
       setTimeout(() => btn.classList.remove("pulse"), 220);
+
+      try {
+        await saveMoodHistory(moodName);
+      } catch (err) {
+        console.error("Failed to save emoji mood:", err);
+      }
 
       setHint(moodName);
     });
   });
 }
-
 /* ------------------------------------------------------------
    4) Tasks – full working system
 ------------------------------------------------------------ */
