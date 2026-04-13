@@ -196,5 +196,39 @@
     <script src="utils.js"></script>
     <script src="journal.js?v=1" defer></script>
     <script src="home.js"></script>
+    <div class="chatbot-wrapper">
+
+  <!-- زر الشات (الأيقونة) -->
+  <button class="chatbot-btn" id="chatbotBtn">
+    <img
+      src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png"
+      alt="Chatbot"
+      class="chatbot-icon-img"
+    />
+  </button>
+
+  <!-- نافذة الشات -->
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <div class="chat-header-inner">
+        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" class="chat-header-avatar" />
+        <span>مساعد أناه الذكي</span>
+      </div>
+      <button id="closeChat" class="chat-close-btn">×</button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot-msg">
+        مرحباً بك 🤍.. أنا هنا لأسمعك، كيف كان يومك؟
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" id="userMsgInput" placeholder="اكتب شعورك هنا..." />
+      <button id="sendMsgBtn">➤</button>
+    </div>
+  </div>
+
+</div>
   </body>
 </html>
