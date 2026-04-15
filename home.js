@@ -43,14 +43,134 @@ function setGreeting() {
 /* ------------------------------------------------------------
    2) Quotes
 ------------------------------------------------------------ */
-function initQuotes() {
+async function initQuotes() {
   const btn = $("newQuoteBtn");
   const text = $("quoteText");
   if (!btn || !text) return;
-  const quotes = ["لا يجب أن يكون يومك مثاليًا حتى يكون مفيدًا.", "كل خطوة صغيرة تجاه نفسك هي إنجاز يُحسب لك.", "لا بأس لو لم تكن على ما يرام اليوم.", "التقدم الهادئ لا يزال تقدمًا.", "اهدأ… كل شيء يمر."];
-  const pick = () => quotes[Math.floor(Math.random() * quotes.length)];
-  text.textContent = `"${pick()}"`;
-  btn.addEventListener("click", () => (text.textContent = `"${pick()}"`));
+
+  const QUOTES_CSV_URL =
+    "https://raw.githubusercontent.com/BoulahiaAhmed/Arabic-Quotes-Dataset/main/Arabic_Quotes.csv";
+
+  let quotes = [];
+  let lastQuote = null;
+
+  function parseCSVLine(line) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const next = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && next === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  function parseQuotesFromCSV(csvText) {
+    const lines = csvText
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    if (!lines.length) return [];
+
+    const header = parseCSVLine(lines[0]);
+    const quoteIndex = header.findIndex(
+      col => col.replace(/^"|"$/g, "").trim().toLowerCase() === "quote"
+    );
+
+    if (quoteIndex === -1) {
+      console.error("Quote column not found in CSV.");
+      return [];
+    }
+
+    const parsedQuotes = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVLine(lines[i]);
+      const rawQuote = row[quoteIndex];
+      if (!rawQuote) continue;
+
+      const cleaned = rawQuote.replace(/^"|"$/g, "").trim();
+      if (cleaned) parsedQuotes.push(cleaned);
+    }
+
+    return parsedQuotes;
+  }
+
+  function pickRandomQuote() {
+    if (!quotes.length) {
+      return "لا يجب أن يكون يومك مثاليًا حتى يكون مفيدًا.";
+    }
+
+    let q = quotes[Math.floor(Math.random() * quotes.length)];
+
+    if (quotes.length > 1) {
+      while (q === lastQuote) {
+        q = quotes[Math.floor(Math.random() * quotes.length)];
+      }
+    }
+
+    lastQuote = q;
+    return q;
+  }
+
+  async function loadQuotes() {
+    try {
+      text.textContent = "جاري تحميل الاقتباسات...";
+      btn.disabled = true;
+
+      const response = await fetch(QUOTES_CSV_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch CSV: ${response.status}`);
+      }
+
+      const csvText = await response.text();
+      quotes = parseQuotesFromCSV(csvText);
+
+      if (!quotes.length) {
+        throw new Error("No quotes parsed from CSV.");
+      }
+
+      text.textContent = `"${pickRandomQuote()}"`;
+    } catch (error) {
+      console.error("Quotes loading failed:", error);
+
+      quotes = [
+        "لا يجب أن يكون يومك مثاليًا حتى يكون مفيدًا.",
+        "كل خطوة صغيرة تجاه نفسك هي إنجاز يُحسب لك.",
+        "لا بأس لو لم تكن على ما يرام اليوم.",
+        "التقدم الهادئ لا يزال تقدمًا.",
+        "اهدأ… كل شيء يمر."
+      ];
+
+      text.textContent = `"${pickRandomQuote()}"`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener("click", () => {
+    text.textContent = `"${pickRandomQuote()}"`;
+  });
+
+  await loadQuotes();
 }
 
 /* ------------------------------------------------------------
