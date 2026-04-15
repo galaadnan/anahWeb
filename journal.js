@@ -1,5 +1,6 @@
 /* ============================================================
-   JOURNAL.JS - نسخة كاملة (Save + AI analysis + Status Modal + Show All + Clear Today + Rich Text Editor)
+   JOURNAL.JS - النسخة الاحترافية النهائية (أناه)
+   ✅ الميزات: محرر نصوص متطور + معالجة تضارب البيانات (تخيير المستخدم)
 ============================================================ */
 
 /* ---------- 1) Status Modal بدل alert ---------- */
@@ -70,17 +71,17 @@ function restoreSelection() {
 }
 
 window.formatDoc = function(cmd, value = null) {
-  restoreSelection(); // نرجع المؤشر مكانه
+  restoreSelection();
   document.execCommand(cmd, false, value);
-  saveSelection(); // نحفظ المكان الجديد
+  saveSelection();
 };
 
 window.insertEmoji = function(emoji) {
-  restoreSelection(); // نرجع المؤشر مكانه
+  restoreSelection();
   document.execCommand('insertHTML', false, emoji);
   const palette = document.getElementById("emojiPalette");
   if (palette) palette.hidden = true;
-  saveSelection(); // نحفظ المكان الجديد
+  saveSelection();
 };
 
 /* ---------- عناصر الصفحة ---------- */
@@ -110,7 +111,7 @@ async function runLocalAnalysis(text) {
     return { finalMood, confidence, probabilities };
   } catch (error) {
     console.error("AI Server Error:", error);
-    return { finalMood: "⚠️ فشل في الاتصال بالسيرفر", confidence: 0, probabilities: {} };
+    return { finalMood: "⚠️ فشل الاتصال بالسيرفر", confidence: 0, probabilities: {} };
   }
 }
 
@@ -137,7 +138,7 @@ function initRating() {
   paint(0);
 }
 
-/* ---------- 4) حفظ مذكرة اليوم ---------- */
+/* ---------- 4) حفظ مذكرة اليوم (مع فحص التضارب) ---------- */
 async function saveTodayEntry() {
   const noteEl = document.getElementById("note");
   const textContent = (noteEl.innerText || "").trim(); 
@@ -154,15 +155,33 @@ async function saveTodayEntry() {
     return;
   }
 
+  const today = isoToday();
+  const db = firebase.firestore();
+  const userRef = db.collection("users").doc(user.uid);
+
   try {
+    // 🔍 فحص هل يوجد إيموجي محفوظ لهذا اليوم؟ (مبدأ المصدر الواحد)
+    const emojiDoc = await userRef.collection("emoji_moods").doc(today).get();
+    
+    if (emojiDoc.exists) {
+      // 🚨 تخيير المستخدم عند التعارض
+      const choice = confirm("لديك شعور (إيموجي) مسجل لهذا اليوم. هل تريد حذفه واعتماد هذه اليومية بدلاً منه في التحليل؟\n\n(موافق = اعتماد اليومية، إلغاء = الاحتفاظ بالإيموجي)");
+      
+      if (!choice) {
+        showJournalStatus("تم إلغاء الحفظ للحفاظ على سجل الإيموجي الحالي.", "info");
+        return; 
+      }
+      // حذف الإيموجي لضمان وجود مصدر بيانات واحد فقط
+      await userRef.collection("emoji_moods").doc(today).delete();
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = "جاري التحليل والحفظ...";
 
     const analysis = await runLocalAnalysis(textContent);
     const moodResult = analysis.finalMood;
-    const today = isoToday();
 
-    await firebase.firestore().collection("users").doc(user.uid).collection("entries").doc(today).set({
+    await userRef.collection("entries").doc(today).set({
       text: textContent,
       html: htmlContent, 
       rating: selectedRating,
@@ -173,7 +192,7 @@ async function saveTodayEntry() {
       savedAt: firebase.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    showJournalStatus(`تم الحفظ والتحليل بنجاح! نتيجتك: ${moodResult}`, "success");
+    showJournalStatus(`تم الحفظ بنجاح! تم اعتماد اليومية كمصدر للتحليل اليوم.`, "success");
     noteEl.innerHTML = ""; 
     selectedRating = 0;
     initRating();
@@ -186,73 +205,71 @@ async function saveTodayEntry() {
   }
 }
 
-/* ---------- 5) Clear Editor Content (Local Reset Only) ---------- */
+/* ---------- 5) مسح النص من المربع ---------- */
 function clearTodayEntry() {
   const noteEl = document.getElementById("note");
-  
-  if (noteEl) {
-    noteEl.innerHTML = ""; // This clears all text, colors, and images from the editor
-  }
-
-  // Reset the star rating to zero
+  if (noteEl) noteEl.innerHTML = "";
   selectedRating = 0;
-  if (typeof initRating === "function") {
-    initRating();
-  }
-
+  initRating();
   showJournalStatus("تم مسح النص من المربع.", "info");
 }
 
-/* ---------- 6) عرض كل المذكرات ---------- */
+/* ---------- 6) عرض كل المذكرات الموحد ---------- */
 async function openAllEntriesModal() {
   const user = firebase.auth().currentUser;
-  if (!user) {
-    showJournalStatus("يرجى تسجيل الدخول أولاً", "error");
-    return;
-  }
+  if (!user) return showJournalStatus("يرجى تسجيل الدخول أولاً", "error");
 
   const viewModal = document.getElementById("viewModal");
   const viewContent = document.getElementById("viewContent");
   if (!viewModal || !viewContent) return;
 
-  viewContent.innerHTML = `<div style="padding:14px"><p style="margin:0;color:#666">جاري تحميل المذكرات...</p></div>`;
+  viewContent.innerHTML = `<div style="padding:14px"><p style="margin:0;color:#666">جاري تحميل السجل الموحد...</p></div>`;
   viewModal.hidden = false;
   document.getElementById("closeModal").onclick = () => (viewModal.hidden = true);
-  viewModal.onclick = (e) => { if (e.target === viewModal) viewModal.hidden = true; };
 
   try {
-    const snap = await firebase.firestore().collection("users").doc(user.uid).collection("entries").get();
-    if (snap.empty) {
-      viewContent.innerHTML = `<div style="padding:14px"><p style="margin:0">لا توجد مذكرات محفوظة بعد.</p></div>`;
-      return;
-    }
+    const db = firebase.firestore();
+    const userRef = db.collection("users").doc(user.uid);
 
-    const docs = [];
-    snap.forEach((d) => docs.push(d));
-    docs.sort((a, b) => b.id.localeCompare(a.id));
+    // جلب المصدرين معاً للعرض
+    const [emojiSnap, journalSnap] = await Promise.all([
+      userRef.collection("emoji_moods").get(),
+      userRef.collection("entries").get()
+    ]);
 
-    let html = `<div style="padding:12px">`;
-    docs.forEach((doc) => {
-      const d = doc.data() || {};
-      const contentHTML = d.html ? d.html : escapeHtml(d.text || "");
-      html += `
-        <div style="border:1px solid #eee;border-radius:14px;padding:12px;margin:10px 0;background:#fff">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-            <strong>${doc.id}</strong><span>${escapeHtml(d.finalMood || "غير محدد")}</span>
-          </div>
-          <div style="margin-top:6px;color:#777;font-size:0.9rem">⭐ ${d.rating || 0}/5 · 📝 ${d.words || 0} كلمة</div>
-          <div style="margin-top:10px;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere;">${contentHTML || "—"}</div>
+    const historyMap = new Map();
+    emojiSnap.forEach(d => historyMap.set(d.id, { mood: d.data().mood, type: 'إيموجي ✨', date: d.id }));
+    journalSnap.forEach(d => historyMap.set(d.id, { 
+      mood: d.data().finalMood, 
+      html: d.data().html, 
+      text: d.data().text, 
+      rating: d.data().rating, 
+      words: d.data().words, 
+      type: 'يومية 📝', 
+      date: d.id 
+    }));
+
+    const sortedList = Array.from(historyMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+    viewContent.innerHTML = `<div style="padding:12px">` + sortedList.map(item => `
+      <div style="border:1px solid #eee;border-radius:14px;padding:12px;margin:10px 0;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>${item.date}</strong>
+          <span>${escapeHtml(item.mood || "—")}</span>
         </div>
-      `;
-    });
-    viewContent.innerHTML = html + `</div>`;
+        <div style="color:#999;font-size:0.75rem;margin-top:2px">المصدر: ${item.type}</div>
+        ${item.type === 'يومية 📝' ? `<div style="margin-top:6px;color:#777;font-size:0.85rem">⭐ ${item.rating || 0}/5 · 📝 ${item.words || 0} كلمة</div>` : ''}
+        <div style="margin-top:10px;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere;">${item.html || escapeHtml(item.text || "—")}</div>
+      </div>
+    `).join("") + `</div>`;
+
   } catch (err) {
-    viewContent.innerHTML = `<div style="padding:14px"><p style="margin:0;color:#b00020">حدث خطأ أثناء تحميل المذكرات.</p></div>`;
+    viewContent.innerHTML = `<div style="padding:14px;color:red">حدث خطأ أثناء تحميل البيانات.</div>`;
   }
 }
 
 /* ============================================================
-   ✅ 7) Achievements (زر عرض الإنجازات)
+   ✅ 7) Achievements (الإنجازات الموحدة)
 ============================================================ */
 function parseISODate(id) {
   const [y, m, d] = String(id).split("-").map(Number);
@@ -261,50 +278,7 @@ function parseISODate(id) {
 
 function daysBetween(a, b) {
   const ms = 24 * 60 * 60 * 1000;
-  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.round((db - da) / ms);
-}
-
-async function loadAllEntriesDocs(uid) {
-  const snap = await firebase.firestore().collection("users").doc(uid).collection("entries").get();
-  const docs = [];
-  snap.forEach((d) => docs.push(d));
-  docs.sort((a, b) => a.id.localeCompare(b.id));
-  return docs;
-}
-
-function computeStreaks(dateIdsAsc) {
-  if (!dateIdsAsc.length) return { current: 0, best: 0 };
-  let best = 1, run = 1;
-  for (let i = 1; i < dateIdsAsc.length; i++) {
-    const diff = daysBetween(parseISODate(dateIdsAsc[i - 1]), parseISODate(dateIdsAsc[i]));
-    if (diff === 1) run++; else run = 1;
-    if (run > best) best = run;
-  }
-  let current = 1;
-  for (let i = dateIdsAsc.length - 1; i > 0; i--) {
-    const diff = daysBetween(parseISODate(dateIdsAsc[i - 1]), parseISODate(dateIdsAsc[i]));
-    if (diff === 1) current++; else break;
-  }
-  return { current, best };
-}
-
-function renderAchievements(listEl, stats) {
-  if (!listEl) return;
-  const achvs = [
-    { title: "أول تدوينة", desc: "اكتب أول مذكرة لك.", unlocked: stats.totalEntries >= 1, badge: stats.totalEntries >= 1 ? "مفتوح" : "مغلق", icon: "✍️" },
-    { title: "سلسلة ٣ أيام", desc: "اكتب 3 أيام متتالية.", unlocked: stats.bestStreak >= 3, badge: stats.bestStreak >= 3 ? "مفتوح" : `${Math.min(stats.bestStreak, 3)}/3`, icon: "🔥" },
-    { title: "سلسلة أسبوع", desc: "اكتب 7 أيام متتالية.", unlocked: stats.bestStreak >= 7, badge: stats.bestStreak >= 7 ? "مفتوح" : `${Math.min(stats.bestStreak, 7)}/7`, icon: "🏆" },
-    { title: "300 كلمة", desc: "اكتب 300 كلمة إجمالاً.", unlocked: stats.totalWords >= 300, badge: stats.totalWords >= 300 ? "مفتوح" : `${Math.min(stats.totalWords, 300)}/300`, icon: "📝" },
-    { title: "يوم 5 نجوم", desc: "قيّم يومك 5/5 مرة واحدة.", unlocked: stats.hasFiveStar, badge: stats.hasFiveStar ? "مفتوح" : "مغلق", icon: "⭐" },
-  ];
-  listEl.innerHTML = achvs.map((a) => `
-    <div class="achv-card ${a.unlocked ? "is-unlocked" : ""}">
-      <div class="achv-content"><div class="achv-icon">${a.icon}</div><div class="achv-text"><strong>${a.title}</strong><small>${a.desc}</small></div></div>
-      <div class="achv-badge">${a.badge}</div>
-    </div>
-  `).join("");
+  return Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / ms);
 }
 
 async function initAchievementsUI() {
@@ -315,78 +289,87 @@ async function initAchievementsUI() {
 
   btn.addEventListener("click", async () => {
     const user = firebase.auth().currentUser;
-    if (!user) { showJournalStatus("يرجى تسجيل الدخول أولاً", "error"); return; }
+    if (!user) return;
     
     box.hidden = !box.hidden;
     if (box.hidden) return;
 
-    list.innerHTML = `<div style="padding:8px;color:#666">جاري تحميل الإنجازات...</div>`;
+    list.innerHTML = `<div style="padding:8px;color:#666">تحديث الإنجازات...</div>`;
     try {
-      const docs = await loadAllEntriesDocs(user.uid);
-      const stats = {
-        totalEntries: docs.length,
-        totalWords: docs.reduce((sum, d) => sum + (Number(d.data()?.words) || 0), 0),
-        hasFiveStar: docs.some((d) => Number(d.data()?.rating) === 5),
-        ...computeStreaks(docs.map(d => d.id))
-      };
-      
-      const curStreakEl = document.getElementById("curStreak");
-      if (curStreakEl) curStreakEl.textContent = String(stats.current);
-      const bestStreakEl = document.getElementById("bestStreak");
-      if (bestStreakEl) bestStreakEl.textContent = String(stats.best);
+      const db = firebase.firestore();
+      const userRef = db.collection("users").doc(user.uid);
 
-      renderAchievements(list, stats);
-    } catch (e) {
-      list.innerHTML = `<div style="padding:8px;color:#b00020">تعذر تحميل الإنجازات.</div>`;
-    }
+      const [eSnap, jSnap] = await Promise.all([userRef.collection("emoji_moods").get(), userRef.collection("entries").get()]);
+      
+      // دمج التواريخ لحساب السلسلة (Streaks)
+      const allDates = [...new Set([...eSnap.docs.map(d => d.id), ...jSnap.docs.map(d => d.id)])].sort();
+      
+      let best = 0, current = 0;
+      if (allDates.length > 0) {
+        let run = 1; best = 1;
+        for (let i = 1; i < allDates.length; i++) {
+          if (daysBetween(parseISODate(allDates[i-1]), parseISODate(allDates[i])) === 1) run++;
+          else run = 1;
+          if (run > best) best = run;
+        }
+        current = (daysBetween(parseISODate(allDates[allDates.length-1]), new Date()) <= 1) ? run : 0;
+      }
+
+      document.getElementById("curStreak").textContent = current;
+      document.getElementById("bestStreak").textContent = best;
+
+      const totalWords = jSnap.docs.reduce((sum, d) => sum + (Number(d.data()?.words) || 0), 0);
+      const hasFiveStar = jSnap.docs.some(d => Number(d.data()?.rating) === 5);
+
+      const achvs = [
+        { title: "أول تدوينة", desc: "سجلت أول شعور لك.", unlocked: allDates.length >= 1, icon: "✍️" },
+        { title: "سلسلة ٣ أيام", desc: "تابعت مشاعرك لـ ٣ أيام.", unlocked: best >= 3, icon: "🔥" },
+        { title: "٣٠٠ كلمة", desc: "كتبت أكثر من ٣٠٠ كلمة.", unlocked: totalWords >= 300, icon: "📝" },
+        { title: "يوم ٥ نجوم", desc: "قيّمت يومك بـ ٥ نجوم.", unlocked: hasFiveStar, icon: "⭐" }
+      ];
+
+      list.innerHTML = achvs.map(a => `
+        <div class="achv-card ${a.unlocked ? "is-unlocked" : ""}">
+          <div class="achv-content"><div class="achv-icon">${a.icon}</div><div class="achv-text"><strong>${a.title}</strong><small>${a.desc}</small></div></div>
+          <div class="achv-badge">${a.unlocked ? "مفتوح" : "مغلق"}</div>
+        </div>
+      `).join("");
+    } catch (e) { console.error(e); }
   });
 }
 
-/* ---------- 8) تهيئة الصفحة وربط الأزرار ---------- */
+/* ---------- 8) تهيئة الصفحة ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   if (todayEl) todayEl.textContent = isoToday();
   initRating();
-
   saveBtn?.addEventListener("click", saveTodayEntry);
   clearTodayBtn?.addEventListener("click", clearTodayEntry);
   document.getElementById("showAll")?.addEventListener("click", openAllEntriesModal);
   initAchievementsUI();
 
-  // 1. مراقبة حركة المؤشر عشان نحفظ مكانه
   const noteEl = document.getElementById("note");
-  if(noteEl) {
-    noteEl.addEventListener("keyup", saveSelection);
-    noteEl.addEventListener("mouseup", saveSelection);
-    noteEl.addEventListener("focusout", saveSelection);
-  }
+  if(noteEl) ["keyup", "mouseup", "focusout"].forEach(ev => noteEl.addEventListener(ev, saveSelection));
 
-  // 2. إغلاق قائمة الإيموجي إذا ضغطتي برا
-  document.addEventListener("click", function(e) {
-    const pal = document.getElementById("emojiPalette");
-    const btn = document.getElementById("emojiBtn");
-    if (pal && !pal.hidden && !pal.contains(e.target) && btn && !btn.contains(e.target)) {
-      pal.hidden = true;
-    }
+  document.addEventListener("click", (e) => {
+    const pal = document.getElementById("emojiPalette"), btn = document.getElementById("emojiBtn");
+    if (pal && !pal.hidden && !pal.contains(e.target) && btn && !btn.contains(e.target)) pal.hidden = true;
   });
 
-  // 3. تفعيل زر الإيموجي
   document.getElementById("emojiBtn")?.addEventListener("click", () => {
-    const pal = document.getElementById("emojiPalette");
-    if(pal) pal.hidden = !pal.hidden;
+    const p = document.getElementById("emojiPalette"); if(p) p.hidden = !p.hidden;
   });
 
-  // 4. رفع وإدراج الصور (مع حفظ مكان المؤشر)
   document.getElementById("imageUpload")?.addEventListener("change", function(e) {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = function(event) {
-        restoreSelection(); // نرجع المؤشر مكانه الصح
+      reader.onload = (event) => {
+        restoreSelection();
         document.execCommand('insertImage', false, event.target.result);
-        saveSelection(); // نحفظ المكان الجديد بعد الصورة
+        saveSelection();
       };
       reader.readAsDataURL(file);
-      e.target.value = ''; // يخليك تقدرين ترفعين نفس الصورة مرة ثانية لو حذفتيها
+      e.target.value = '';
     }
   });
 });

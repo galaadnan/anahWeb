@@ -4,14 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>أناه | تحليل المزاج</title>
+  <title>أناه | التحليل الموحد</title>
 
   <link rel="stylesheet" href="styles.css" />
-
-  <link
-    href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet" />
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -50,10 +46,10 @@
 
       <section class="analyze-header-top">
         <div>
-          <p class="eyebrow">لوحة تحليل مشاعرك</p>
-          <h1 class="analyze-title">نظرة أعمق على مزاجك</h1>
+          <p class="eyebrow">لوحة التحكم الذكية</p>
+          <h1 class="analyze-title">التحليل الشعوري الموحد</h1>
           <p class="analyze-lead type-soft" id="analysisLead">
-            يتم تحليل مشاعرك بناءً على مذكراتك اليومية.
+            نجمع لك البيانات من مذكراتك واختياراتك اليومية لنقدم لك رؤية شاملة لاتزانك العاطفي.
           </p>
         </div>
 
@@ -62,14 +58,7 @@
         </div>
       </section>
 
-      <!-- نوع التحليل -->
-      <div class="an-chip-group" id="analysisTypeSwitch" style="margin-bottom:10px">
-        <button class="an-chip is-active" data-analysis="journal">تحليل اليوميات</button>
-        <button class="an-chip" data-analysis="emoji">تحليل الإيموجي</button>
-      </div>
-
-      <!-- المدة -->
-      <div class="an-chip-group">
+      <div class="an-chip-group" style="margin-bottom:20px">
         <button class="an-chip" data-range="7">آخر ٧ أيام</button>
         <button class="an-chip" data-range="30">آخر ٣٠ يوم</button>
         <button class="an-chip is-active" data-range="90">آخر ٩٠ يوم</button>
@@ -78,9 +67,9 @@
       <section class="an-grid">
         
         <section class="an-card an-card--primary">
-          <h2 id="chartTitle">تذبذب المزاج</h2>
+          <h2 id="chartTitle">مخطط الاستقرار الشعوري</h2>
           <p class="an-subtext" id="chartSubtext">
-            يعرض هذا الرسم عدد مرات ظهور كل شعور في مذكراتك خلال الفترة المختارة.
+            يوضح التوزيع النسبي لمشاعرك بناءً على تحليل أناه الذكي وتفاعلاتك المسجلة.
           </p>
           <div class="an-chart-wrap">
             <canvas id="moodChart"></canvas>
@@ -88,16 +77,15 @@
         </section>
 
         <section>
-
           <section class="an-card">
-            <h2 id="topMoodsTitle">أعلى مشاعر ظهورًا</h2>
+            <h2 id="topMoodsTitle">المشاعر الأكثر ظهوراً</h2>
             <div class="an-metrics" id="topMoods"></div>
           </section>
 
           <section class="an-card" id="recommendationCard" style="margin-top:14px">
-            <h2>توصيات مخصّصة لك</h2>
+            <h2>توصيات مدعومة بالبيانات</h2>
             <p class="an-subtext">
-              بناءً على حالتك النفسية الأخيرة ونمط مشاعرك.
+              بناءً على حالتك النفسية الأخيرة ونمط مشاعرك المدمج.
             </p>
 
             <p class="an-subtext" id="recWeekNote"></p>
@@ -105,18 +93,19 @@
             <div class="rec-quote" id="recQuote"></div>
 
             <div class="rec-section">
-              <h4>خطوات سريعة</h4>
+              <h4>إجراءات سريعة</h4>
               <ul id="recQuick"></ul>
             </div>
 
             <div class="rec-section">
-              <h4>اقتراحات لليوم</h4>
+              <h4>خطة تعزيز الوعي لليوم</h4>
               <ul id="recDaily"></ul>
             </div>
           </section>
 
           <section class="an-card" style="margin-top:14px">
-            <h2 id="historyTitle">سجل المشاعر</h2>
+            <h2 id="historyTitle">التسلسل الزمني للمشاعر</h2>
+            <p class="an-subtext">سجل يوضح مشاعرك مع توضيح مصدر البيانات (يوميات أو إيموجي).</p>
             <div class="an-mood-list" id="moodList"></div>
           </section>
 
@@ -133,8 +122,7 @@
           <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
           <span>أناه</span>
         </a>
-        <span class="footer-copy"> © <span id="year"></span> أناه </span>
-        <span class="footer-tagline"> مساحة صغيرة تهتم بمشاعرك بلطف. </span>
+        <span class="footer-copy"> © <span id="year">2026</span> أناه </span>
       </div>
 
       <nav class="footer-links">
@@ -155,40 +143,32 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
   <script src="firebase-config.js"></script>
-  <script src="analyze.js?v=emoji-journal-dual"></script>
+  <script src="analyze.js?v=unified-final"></script>
+
   <div class="chatbot-wrapper">
+    <button class="chatbot-btn" id="chatbotBtn">
+      <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="Chatbot" class="chatbot-icon-img" />
+    </button>
 
-  <!-- زر الشات (الأيقونة) -->
-  <button class="chatbot-btn" id="chatbotBtn">
-    <img
-      src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png"
-      alt="Chatbot"
-      class="chatbot-icon-img"
-    />
-  </button>
-
-  <!-- نافذة الشات -->
-  <div class="chat-window" id="chatWindow">
-    <div class="chat-header">
-      <div class="chat-header-inner">
-        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" class="chat-header-avatar" />
-        <span>مساعد أناه الذكي</span>
+    <div class="chat-window" id="chatWindow">
+      <div class="chat-header">
+        <div class="chat-header-inner">
+          <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" class="chat-header-avatar" />
+          <span>مساعد أناه الذكي</span>
+        </div>
+        <button id="closeChat" class="chat-close-btn">×</button>
       </div>
-      <button id="closeChat" class="chat-close-btn">×</button>
-    </div>
 
-    <div class="chat-messages" id="chatMessages">
-      <div class="message bot-msg">
-        مرحباً بك 🤍.. أنا هنا لأسمعك، كيف كان يومك؟
+      <div class="chat-messages" id="chatMessages">
+        <div class="message bot-msg">مرحباً بك 🤍.. أنا هنا لأسمعك، كيف كان يومك؟</div>
       </div>
-    </div>
 
-    <div class="chat-input-area">
-      <input type="text" id="userMsgInput" placeholder="اكتب شعورك هنا..." />
-      <button id="sendMsgBtn">➤</button>
+      <div class="chat-input-area">
+        <input type="text" id="userMsgInput" placeholder="اكتب شعورك هنا..." />
+        <button id="sendMsgBtn">➤</button>
+      </div>
     </div>
   </div>
 
-</div>
 </body>
 </html>
