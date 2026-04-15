@@ -211,5 +211,18 @@
         </div>
       </div>
     </div>
+    <div id="journalChoiceModal" class="journal-modal" hidden>
+  <div class="journal-modal-dialog dialog-centered" style="max-width: 480px;">
+    <div id="choiceModalIcon" style="font-size: 3rem; margin-bottom: 10px;">⚖️</div>
+    <h3 class="modal-title">تعارض في البيانات</h3>
+    <p id="choiceModalMessage" style="margin-bottom: 25px; color: #555; line-height: 1.6;">
+      لديك شعور (إيموجي) مسجل لهذا اليوم. هل تريد حذفه واعتماد هذه اليومية بدلاً منه في التحليل؟
+    </p>
+    <div style="display: flex; gap: 10px; width: 100%;">
+      <button id="confirmChoiceBtn" class="pill-button pill-primary" style="flex: 1;">اعتماد اليومية</button>
+      <button id="cancelChoiceBtn" class="pill-button pill-ghost" style="flex: 1;">الاحتفاظ بالإيموجي</button>
+    </div>
+  </div>
+</div>
   </body>
 </html>

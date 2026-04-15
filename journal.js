@@ -138,7 +138,7 @@ function initRating() {
   paint(0);
 }
 
-/* ---------- 4) حفظ مذكرة اليوم (مع فحص التضارب) ---------- */
+/* ---------- 4) حفظ مذكرة اليوم (مع المودال المطور) ---------- */
 async function saveTodayEntry() {
   const noteEl = document.getElementById("note");
   const textContent = (noteEl.innerText || "").trim(); 
@@ -160,21 +160,23 @@ async function saveTodayEntry() {
   const userRef = db.collection("users").doc(user.uid);
 
   try {
-    // 🔍 فحص هل يوجد إيموجي محفوظ لهذا اليوم؟ (مبدأ المصدر الواحد)
+    // 🔍 1. فحص هل يوجد إيموجي محفوظ؟
     const emojiDoc = await userRef.collection("emoji_moods").doc(today).get();
     
     if (emojiDoc.exists) {
-      // 🚨 تخيير المستخدم عند التعارض
-      const choice = confirm("لديك شعور (إيموجي) مسجل لهذا اليوم. هل تريد حذفه واعتماد هذه اليومية بدلاً منه في التحليل؟\n\n(موافق = اعتماد اليومية، إلغاء = الاحتفاظ بالإيموجي)");
+      // 🚨 2. استخدام المودال المخصص بدلاً من confirm
+      const userWantsToOverwrite = await showJournalChoiceModal();
       
-      if (!choice) {
-        showJournalStatus("تم إلغاء الحفظ للحفاظ على سجل الإيموجي الحالي.", "info");
+      if (!userWantsToOverwrite) {
+        showJournalStatus("تم إلغاء الحفظ. قررتِ الاحتفاظ بالإيموجي كمصدر للتحليل اليوم.", "info");
         return; 
       }
-      // حذف الإيموجي لضمان وجود مصدر بيانات واحد فقط
+
+      // 3. حذف الإيموجي إذا وافقتِ
       await userRef.collection("emoji_moods").doc(today).delete();
     }
 
+    // 4. عملية التحليل والحفظ
     saveBtn.disabled = true;
     saveBtn.textContent = "جاري التحليل والحفظ...";
 
@@ -192,10 +194,11 @@ async function saveTodayEntry() {
       savedAt: firebase.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    showJournalStatus(`تم الحفظ بنجاح! تم اعتماد اليومية كمصدر للتحليل اليوم.`, "success");
+    showJournalStatus(`تم الحفظ بنجاح! نتيجتك: ${moodResult}`, "success");
     noteEl.innerHTML = ""; 
     selectedRating = 0;
     initRating();
+
   } catch (err) {
     console.error("Save Error:", err);
     showJournalStatus("حدثت مشكلة أثناء الحفظ.", "error");
@@ -373,3 +376,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+// دالة لإظهار مودال التخيير وارجاع قرار المستخدم (Promise)
+function showJournalChoiceModal() {
+  const modal = document.getElementById("journalChoiceModal");
+  const confirmBtn = document.getElementById("confirmChoiceBtn");
+  const cancelBtn = document.getElementById("cancelChoiceBtn");
+
+  return new Promise((resolve) => {
+    modal.hidden = false;
+
+    confirmBtn.onclick = () => {
+      modal.hidden = true;
+      resolve(true); // وافق على استبدال الإيموجي
+    };
+
+    cancelBtn.onclick = () => {
+      modal.hidden = true;
+      resolve(false); // رفض وقرر الاحتفاظ بالإيموجي
+    };
+  });
+}

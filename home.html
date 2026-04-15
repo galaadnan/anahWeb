@@ -28,10 +28,6 @@
     <header class="site-header">
       <div class="shell">
         <nav class="nav">
-<<<<<<< HEAD
-=======
-          <!-- Website logo linking to homepage -->
->>>>>>> a39fb2c721e10974070a837948c4da1455ec6fef
           <a href="home.html" class="brand">
             <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
             <span>أناه</span>
@@ -234,5 +230,18 @@
     <script src="utils.js"></script>
     <script src="home.js"></script>
     <script src="chicklist.js"></script>
+    <div id="emojiChoiceModal" class="journal-modal" hidden>
+  <div class="journal-modal-dialog dialog-centered" style="max-width: 480px;">
+    <div id="emojiChoiceModalIcon" style="font-size: 3rem; margin-bottom: 10px;">⚖️</div>
+    <h3 class="modal-title">تعارض في البيانات</h3>
+    <p id="emojiChoiceModalMessage" style="margin-bottom: 25px; color: #555; line-height: 1.6;">
+      لديك يومية مكتوبة لهذا اليوم. اختيار إيموجي سيؤدي لحذف اليومية والاعتماد على الإيموجي في التحليل. هل أنتِ متأكدة؟
+    </p>
+    <div style="display: flex; gap: 10px; width: 100%;">
+      <button id="confirmEmojiChoiceBtn" class="pill-button pill-primary" style="flex: 1;">اعتماد الإيموجي</button>
+      <button id="cancelEmojiChoiceBtn" class="pill-button pill-ghost" style="flex: 1;">الاحتفاظ باليومية</button>
+    </div>
+  </div>
+</div>
   </body>
 </html>
