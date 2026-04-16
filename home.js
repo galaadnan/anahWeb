@@ -10,7 +10,65 @@ document.addEventListener("DOMContentLoaded", () => {
   initTaskSystem(); 
   initChatbot();
   initTodayUI();
+
+  // 👇 كود الرسالة هنا
+  const openBtn = document.getElementById("openMessageModal");
+  const modal = document.getElementById("messageModal");
+  const closeBtn = document.getElementById("closeMessageModal");
+  const saveMessageBtn = document.getElementById("saveMessageBtn");
+
+  if (openBtn) {
+    openBtn.addEventListener("click", () => {
+      modal.hidden = false;
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.hidden = true;
+    });
+  }
+
+  if (saveMessageBtn) {
+    saveMessageBtn.addEventListener("click", () => {
+      const text = document.getElementById("futureMessageInput").value;
+      const days = parseInt(document.getElementById("messageDelay").value);
+
+      if (!text.trim()) {
+        alert("اكتب رسالة أولاً 🤍");
+        return;
+      }
+
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + days);
+
+      const data = {
+        message: text,
+        showAt: futureDate.toISOString()
+      };
+
+      localStorage.setItem("futureMessage", JSON.stringify(data));
+
+      modal.hidden = true;
+      document.getElementById("successModal").hidden = false;
+    
+    });
+  }
+    document.getElementById("closeSuccessModal").addEventListener("click", () => {
+      document.getElementById("successModal").hidden = true;
 });
+
+  checkFutureMessage(); // 👈 هنا نقلناها
+
+  const closeFutureBtn = document.getElementById("closeFutureMessageModal");
+
+if (closeFutureBtn) {
+  closeFutureBtn.addEventListener("click", () => {
+    document.getElementById("futureMessageModal").hidden = true;
+  });
+}
+});
+
 
 /* ------------------------------------------------------------
    Helpers
@@ -353,4 +411,24 @@ function initChatbot() {
   }
   sendBtn.onclick = handleSend;
   inputEl.onkeydown = (e) => { if (e.key === "Enter") handleSend(); };
+}
+function checkFutureMessage() {
+  const data = JSON.parse(localStorage.getItem("futureMessage"));
+
+  if (!data) return;
+
+  const now = new Date();
+  const showDate = new Date(data.showAt);
+
+  if (now >= showDate) {
+    const modal = document.getElementById("futureMessageModal");
+    const textEl = document.getElementById("futureMessageText");
+
+    if (modal && textEl) {
+      textEl.textContent = data.message;
+      modal.hidden = false;
+    }
+
+    localStorage.removeItem("futureMessage");
+  }
 }

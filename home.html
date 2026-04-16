@@ -156,6 +156,17 @@
               <button id="newQuoteBtn" type="button" class="quote-btn">اقتباس آخر</button>
             </section>
 
+            <div class="home-card self-message-card">
+              <h2 class="home-message-title">
+                <img src="images/MessageIcon.png" class="home-message-icon" alt="icon">
+                رسالة لنفسك
+              </h2>
+              <p>اكتب رسالة لنفسك في المستقبل 🤍</p>
+              <button id="openMessageModal" class="pill-button pill-primary">
+                اكتب رسالة
+              </button>
+            </div>
+
             <section class="home-card quick-actions" aria-label="روابط سريعة">
               <h2>روابط سريعة</h2>
               <div class="quick-actions-grid">
@@ -241,6 +252,70 @@
       <button id="confirmEmojiChoiceBtn" class="pill-button pill-primary" style="flex: 1;">اعتماد الإيموجي</button>
       <button id="cancelEmojiChoiceBtn" class="pill-button pill-ghost" style="flex: 1;">الاحتفاظ باليومية</button>
     </div>
+  </div>
+</div>
+<div id="messageModal" class="journal-modal" hidden>
+  <div class="journal-modal-dialog">
+
+<h3 class="modal-title">
+  <img src="images/MessageIcon.png" class="modal-icon" alt="icon">
+ رسالة لنفسك
+</h3>
+    <textarea 
+      id="futureMessageInput"
+      placeholder="اكتب شيء تحب تتذكرة لاحقًا..."
+      style="width:100%; height:100px; margin:10px 0;"
+    ></textarea>
+
+    <select id="messageDelay" class="custom-select">
+      <option value="1">بعد يوم</option>
+      <option value="3">بعد 3 أيام</option>
+      <option value="7">بعد أسبوع</option>
+    </select>
+
+    <div style="margin-top:15px;">
+      <button id="saveMessageBtn" class="pill-button pill-primary">
+        حفظ الرسالة
+      </button>
+      <button id="closeMessageModal" class="pill-button pill-danger">
+        إلغاء
+      </button>
+      
+    </div>
+
+  </div>
+</div>
+<div id="futureMessageModal" class="journal-modal" hidden>
+  <div class="journal-modal-dialog dialog-centered">
+<h3 class="modal-title">
+  <img src="images/MessageIcon.png" class="modal-icon" alt="icon">
+  رسالة من نفسك
+</h3>
+<p id="futureMessageText" class="modal-body"></p>
+
+<button id="closeFutureMessageModal" class="pill-button pill-primary full-width">
+  جميل
+</button>
+    </div>
+
+  </div>
+</div>
+<div id="successModal" class="journal-modal" hidden>
+  <div class="journal-modal-dialog dialog-centered">
+
+    <h3 class="modal-title">
+      <img src="images/MessageIcon.png" class="modal-icon" alt="icon">
+      تم حفظ رسالتك
+    </h3>
+
+    <p class="modal-body">
+      راح توصلك في الوقت اللي اخترتيه 🤍
+    </p>
+
+    <button id="closeSuccessModal" class="pill-button pill-primary full-width">
+      حسناً
+    </button>
+
   </div>
 </div>
   </body>
