@@ -62,16 +62,14 @@
 
       <section class="journal-split-layout slide-right">
         <aside class="journal-sidebar">
-          <section class="journal-card rating-card">
-            <h2>قيّم شعورك اليوم</h2>
-            <div id="rating" class="rating-stars">
-              <button type="button" data-v="1">★</button>
-              <button type="button" data-v="2">★</button>
-              <button type="button" data-v="3">★</button>
-              <button type="button" data-v="4">★</button>
-              <button type="button" data-v="5">★</button>
-            </div>
-            <div id="ratingText" class="rating-text">قيّم يومك: 0/5</div>
+         <section class="journal-card prompt-card">
+            <h2>إلهام للكتابة 💡</h2>
+            <p id="dailyPromptText" style="color: #555; margin: 12px 0; font-size: 0.95rem; line-height: 1.6; font-weight: 500;">
+              جاري تحميل السؤال...
+            </p>
+            <button id="newPromptBtn" class="pill-button pill-ghost" style="padding: 6px 14px; font-size: 0.8rem; width: 100%;">
+              <i class="fas fa-sync-alt" style="margin-left: 5px;"></i> سؤال آخر
+            </button>
           </section>
 
           <section class="journal-card streak-card">

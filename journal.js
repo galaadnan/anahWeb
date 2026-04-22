@@ -1,14 +1,10 @@
 /**
  * ============================================================================
- * JOURNAL.JS - Professional Edition (Anah - Dual Analysis & Sentences)
- * Features: Rich Text Editor, Dual Emotion Detection (Primary/Secondary),
- * Sentence-Level Breakdown, Conflict Resolution, and Data Persistence.
+ * JOURNAL.JS - Professional Edition (Anah)
+ * Features: Rich Editor, Dual Emotion, Achievements, Daily Prompts.
  * ============================================================================
  */
 
-/**
- * 1. Status Modal Utility
- */
 function showJournalStatus(message, type = "info") {
   const modal = document.getElementById("journalStatusModal");
   const msgEl = document.getElementById("journalStatusMessage");
@@ -26,18 +22,12 @@ function showJournalStatus(message, type = "info") {
   closeBtn.onclick = () => (modal.hidden = true);
 }
 
-/**
- * Helper Functions
- */
 function wordCount(t = "") { return t.trim() ? (t.trim().match(/\S+/g) || []).length : 0; }
 function isoToday() { return new Date().toISOString().split("T")[0]; }
 function escapeHtml(s = "") {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/**
- * Rich Text Editor State Management
- */
 let savedRange = null;
 
 function saveSelection() {
@@ -64,13 +54,38 @@ window.formatDoc = (cmd, val = null) => {
 window.insertEmoji = (emoji) => {
   restoreSelection();
   document.execCommand('insertHTML', false, emoji);
-  document.getElementById("emojiPalette").hidden = true;
+  const p = document.getElementById("emojiPalette");
+  if(p) p.hidden = true;
   saveSelection();
 };
 
 /**
- * 2. AI Emotion Analysis (API Call)
+ * أسئلة الإلهام اليومية (Daily Prompts)
  */
+const dailyPrompts = [
+  "ما هو أكثر شيء تشعر بالامتنان له اليوم؟",
+  "لو كان ليومك عنوان، ماذا سيكون؟",
+  "موقف بسيط أسعدك أو أضحكك اليوم؟",
+  "تحدي واجهته اليوم وكيف تعاملت معه؟",
+  "فكرة أو خاطرة لم تفارق ذهنك اليوم؟",
+  "ما هو الشعور الغالب عليك الآن ولماذا؟",
+  "شيء واحد تتمنى إنجازه غداً؟"
+];
+
+function initDailyPrompt() {
+  const textEl = document.getElementById("dailyPromptText");
+  const btnEl = document.getElementById("newPromptBtn");
+  if (!textEl || !btnEl) return;
+
+  const setRandomPrompt = () => {
+    const random = dailyPrompts[Math.floor(Math.random() * dailyPrompts.length)];
+    textEl.textContent = random;
+  };
+
+  setRandomPrompt();
+  btnEl.addEventListener("click", setRandomPrompt);
+}
+
 async function runLocalAnalysis(text) {
   try {
     const response = await fetch("http://127.0.0.1:8000/predict", {
@@ -78,11 +93,8 @@ async function runLocalAnalysis(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
-
     if (!response.ok) throw new Error(`AI server error`);
-
     const data = await response.json();
-    
     return {
       finalMood: data.finalMood || "غير محدد",
       secondaryMood: data.secondaryMood || null,
@@ -95,29 +107,6 @@ async function runLocalAnalysis(text) {
   }
 }
 
-/**
- * 3. Star Rating System
- */
-let selectedRating = 0;
-function initRating() {
-  const stars = Array.from(document.querySelectorAll("#rating button[data-v]"));
-  const paint = (n) => {
-    selectedRating = n;
-    stars.forEach(btn => btn.classList.toggle("active", Number(btn.dataset.v) <= n));
-    if (document.getElementById("ratingText")) {
-      document.getElementById("ratingText").textContent = `قيّم يومك: ${n}/5`;
-    }
-  };
-  document.getElementById("rating")?.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-v]");
-    if (btn) paint(Number(btn.dataset.v));
-  });
-  paint(0);
-}
-
-/**
- * 4. Save Journal Entry (With Dual Emotion Data)
- */
 async function saveTodayEntry() {
   const saveBtn = document.getElementById("save");
   const noteEl = document.getElementById("note");
@@ -147,7 +136,6 @@ async function saveTodayEntry() {
     await userRef.collection("entries").doc(today).set({
       text: textContent,
       html: htmlContent,
-      rating: selectedRating,
       words: wordCount(textContent),
       finalMood: analysis.finalMood,
       secondaryMood: analysis.secondaryMood,
@@ -157,11 +145,11 @@ async function saveTodayEntry() {
     }, { merge: true });
 
     let msg = `تم الحفظ! الشعور الغالب: ${analysis.finalMood}`;
-if (analysis.secondaryMood) msg += `، ممزوجاً بشعور: ${analysis.secondaryMood}`;
+    if (analysis.secondaryMood) msg += `، ممزوجاً بشعور: ${analysis.secondaryMood}`;
     showJournalStatus(msg, "success");
     
     noteEl.innerHTML = ""; 
-    initRating();
+    if(typeof initAchievementsUI === "function") initAchievementsUI(); // تحديث الإنجازات بعد الحفظ
 
   } catch (err) {
     console.error("Firestore Save Error:", err);
@@ -172,9 +160,6 @@ if (analysis.secondaryMood) msg += `، ممزوجاً بشعور: ${analysis.sec
   }
 }
 
-/**
- * 5. View Unified History (Dual Badges Render) - FIXED
- */
 async function openAllEntriesModal() {
   const user = firebase.auth().currentUser;
   if (!user) return;
@@ -192,21 +177,14 @@ async function openAllEntriesModal() {
 
     const history = new Map();
     
-    // Add Emoji entries to history
     eSnap.forEach(d => {
-        history.set(d.id, { 
-            mood: d.data().mood, 
-            type: 'إيموجي ✨', 
-            date: d.id 
-        });
+        history.set(d.id, { mood: d.data().mood, type: 'إيموجي ✨', date: d.id });
     });
     
-    // Add Journal entries to history
     jSnap.forEach(d => {
       const data = d.data();
       history.set(d.id, { 
         ...data, 
-        // Ensure we are grabbing the correct finalMood and secondaryMood
         mood: data.finalMood || "غير محدد", 
         secondaryMood: data.secondaryMood || null, 
         type: 'يومية 📝', 
@@ -218,14 +196,10 @@ async function openAllEntriesModal() {
 
     viewContent.innerHTML = sorted.map(item => {
       let moodBadges = "";
-
-      // Construct badges based on entry type (Emoji vs. Journal)
       if (item.type === 'إيموجي ✨') {
           moodBadges = `<span class="mood-badge" style="background:rgba(162,155,254,0.15); color:var(--purple); padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.85rem;">${item.mood}</span>`;
       } else {
-          // It's a Journal entry, so display Primary and Secondary
           moodBadges = `<span class="mood-badge" style="background:rgba(162,155,254,0.15); color:var(--purple); padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.85rem;">أساسي: ${item.mood}</span>`;
-          
           if (item.secondaryMood) {
             moodBadges += ` <span class="mood-badge" style="background:rgba(200,200,200,0.15); color:#666; padding:4px 12px; border-radius:20px; font-weight:bold; font-size:0.8rem; margin-right:5px;">ثانوي: ${item.secondaryMood}</span>`;
           }
@@ -258,13 +232,74 @@ async function openAllEntriesModal() {
     }).join("");
   } catch (err) { 
     viewContent.innerHTML = "خطأ في التحميل."; 
-    console.error(err);
   }
 }
 
 /**
- * Conflict Resolution Modal
+ * نظام الإنجازات المستعاد (Achievements)
  */
+function parseISODate(id) {
+  const [y, m, d] = String(id).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function daysBetween(a, b) {
+  const ms = 24 * 60 * 60 * 1000;
+  return Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / ms);
+}
+
+async function initAchievementsUI() {
+  const box = document.getElementById("achievements");
+  const list = document.getElementById("achvList");
+  
+  const user = firebase.auth().currentUser;
+  if (!user || !box || !list) return;
+
+  try {
+    const db = firebase.firestore();
+    const userRef = db.collection("users").doc(user.uid);
+
+    const [eSnap, jSnap] = await Promise.all([userRef.collection("emoji_moods").get(), userRef.collection("entries").get()]);
+    
+    const allDates = [...new Set([...eSnap.docs.map(d => d.id), ...jSnap.docs.map(d => d.id)])].sort();
+    
+    let best = 0, current = 0;
+    if (allDates.length > 0) {
+      let run = 1; best = 1;
+      for (let i = 1; i < allDates.length; i++) {
+        if (daysBetween(parseISODate(allDates[i-1]), parseISODate(allDates[i])) === 1) run++;
+        else run = 1;
+        if (run > best) best = run;
+      }
+      current = (daysBetween(parseISODate(allDates[allDates.length-1]), new Date()) <= 1) ? run : 0;
+    }
+
+    const curEl = document.getElementById("curStreak");
+    const bestEl = document.getElementById("bestStreak");
+    if(curEl) curEl.textContent = current;
+    if(bestEl) bestEl.textContent = best;
+
+    const totalWords = jSnap.docs.reduce((sum, d) => sum + (Number(d.data()?.words) || 0), 0);
+    
+    // إنجاز جديد بدل الـ 5 نجوم: يفتح إذا كتب المستخدم يومية بمشاعر مختلطة
+    const hasMixedEmotions = jSnap.docs.some(d => d.data()?.secondaryMood != null);
+
+    const achvs = [
+      { title: "أول تدوينة", desc: "سجلت أول شعور لك.", unlocked: allDates.length >= 1, icon: "✍️" },
+      { title: "سلسلة ٣ أيام", desc: "تابعت مشاعرك لـ ٣ أيام.", unlocked: best >= 3, icon: "🔥" },
+      { title: "٣٠٠ كلمة", desc: "كتبت أكثر من ٣٠٠ كلمة.", unlocked: totalWords >= 300, icon: "📝" },
+      { title: "مشاعر عميقة", desc: "كتبت يومية تحتوي على مشاعر مركبة.", unlocked: hasMixedEmotions, icon: "🌌" }
+    ];
+
+    list.innerHTML = achvs.map(a => `
+      <div class="achv-card ${a.unlocked ? "is-unlocked" : ""}">
+        <div class="achv-content"><div class="achv-icon">${a.icon}</div><div class="achv-text"><strong>${a.title}</strong><small>${a.desc}</small></div></div>
+        <div class="achv-badge">${a.unlocked ? "مفتوح" : "مغلق"}</div>
+      </div>
+    `).join("");
+  } catch (e) { console.error(e); }
+}
+
 function showJournalChoiceModal() {
   const modal = document.getElementById("journalChoiceModal");
   return new Promise(resolve => {
@@ -280,13 +315,23 @@ function showJournalChoiceModal() {
   });
 }
 
-/**
- * Initialization & Event Listeners
- */
 document.addEventListener("DOMContentLoaded", () => {
-  initRating();
+  initDailyPrompt();
   
-  if (typeof initAchievementsUI === "function") initAchievementsUI();
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      setTimeout(() => initAchievementsUI(), 1000); // تأخير بسيط لضمان تحميل البيانات
+    }
+  });
+
+  const showAchvBtn = document.getElementById("showAchv");
+  if(showAchvBtn) {
+    showAchvBtn.addEventListener("click", () => {
+      const box = document.getElementById("achievements");
+      if(box) box.hidden = !box.hidden;
+      initAchievementsUI();
+    });
+  }
   
   document.getElementById("save")?.addEventListener("click", saveTodayEntry);
   document.getElementById("showAll")?.addEventListener("click", openAllEntriesModal);
