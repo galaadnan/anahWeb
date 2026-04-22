@@ -1,11 +1,12 @@
 /* ============================================================
-   ANALYZE.JS — نسخة كاملة جاهزة
-   ✅ تحليل موحد (يوميات + إيموجي)
-   ✅ توصيات معتمدة على Dataset
-   ✅ تعمل مباشرة مع analyze.html الحالي
+   ANALYZE.JS — Unified + Journal Secondary Emotion Linked
+   ✅ Uses journal finalMood + secondaryMood
+   ✅ Uses emoji + journal together
+   ✅ Recommendations use the latest journal secondary emotion too
+   ✅ Chart + top moods include weighted secondary emotion
 ============================================================ */
 
-console.log("✅ analyze.js loaded (Unified + Dataset Recommendation System)");
+console.log("✅ analyze.js loaded (Unified + Secondary Emotion Linked)");
 
 let chartInstance = null;
 
@@ -34,9 +35,6 @@ const MOOD_COLORS = {
 
 /* ============================================================
    Dataset التوصيات
-   - Data-driven
-   - لا يعتمد على if/else لإنتاج النص
-   - يتم اختيار أقرب سجل من الـ dataset
 ============================================================ */
 const RECOMMENDATION_DATASET = [
   {
@@ -46,8 +44,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["لا بأس", "متعب", "قلق"],
     title: "تعزيز الحالة الإيجابية",
     type: "تعزيز",
-    reason:
-      "تم اختيار هذه التوصية لأن شعورك الحالي إيجابي والنمط العام مستقر نسبيًا، لذلك الأولوية هي الحفاظ على هذا التوازن وتعزيزه.",
+    reason: "تم اختيار هذه التوصية لأن شعورك الحالي إيجابي والنمط العام مستقر نسبيًا، لذلك الأولوية هي الحفاظ على هذا التوازن وتعزيزه.",
     quick_steps: [
       "دوّن سبب هذا الشعور الجميل في سطر واحد",
       "شارك لحظة إيجابية مع شخص قريب",
@@ -66,8 +63,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["لا بأس", "متعب", "قلق"],
     title: "حفظ التوازن الجميل",
     type: "تعزيز",
-    reason:
-      "تم اختيار هذه التوصية لأن لديك شعورًا إيجابيًا حاليًا مع بعض التغير في النمط، لذا المطلوب هو تثبيت العوامل التي تساعدك.",
+    reason: "تم اختيار هذه التوصية لأن لديك شعورًا إيجابيًا حاليًا مع بعض التغير في النمط، لذا المطلوب هو تثبيت العوامل التي تساعدك.",
     quick_steps: [
       "التقط لحظة امتنان قبل نهاية اليوم",
       "ابدأ مهمة صغيرة وأنت في هذه الطاقة",
@@ -86,8 +82,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["لا بأس", "قلق", "متعب"],
     title: "تثبيت المشاعر الجيدة",
     type: "تعزيز",
-    reason:
-      "تم اختيار هذه التوصية لأن لديك لحظات إيجابية لكن مع تذبذب ملحوظ، لذلك الأفضل تثبيت العادات الداعمة بدل الاعتماد على المزاج فقط.",
+    reason: "تم اختيار هذه التوصية لأن لديك لحظات إيجابية لكن مع تذبذب ملحوظ، لذلك الأفضل تثبيت العادات الداعمة بدل الاعتماد على المزاج فقط.",
     quick_steps: [
       "دوّن ما الذي حسّن مزاجك اليوم",
       "خذ استراحة قصيرة لحفظ هذا التوازن",
@@ -107,8 +102,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["سعيد", "متعب", "حزين"],
     title: "دعم يومي متوازن",
     type: "تنظيم",
-    reason:
-      "تم اختيار هذه التوصية لأن النمط الحالي متوازن نسبيًا، لذا الأنسب هو الحفاظ على روتين لطيف يمنع تراكم الضغط.",
+    reason: "تم اختيار هذه التوصية لأن النمط الحالي متوازن نسبيًا، لذا الأنسب هو الحفاظ على روتين لطيف يمنع تراكم الضغط.",
     quick_steps: [
       "خذ نفسًا بطيئًا لمدة دقيقتين",
       "اشرب ماء وغيّر مكانك قليلًا",
@@ -127,8 +121,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["سعيد", "متعب", "حزين"],
     title: "تنظيم لطيف لليوم",
     type: "تنظيم",
-    reason:
-      "تم اختيار هذه التوصية لأن حالتك العامة محايدة مع بعض التقلب، لذا الأفضل خطوات خفيفة تمنع الضغط من التراكم.",
+    reason: "تم اختيار هذه التوصية لأن حالتك العامة محايدة مع بعض التقلب، لذا الأفضل خطوات خفيفة تمنع الضغط من التراكم.",
     quick_steps: [
       "رتب أول مهمة فقط دون التفكير في الباقي",
       "خذ استراحة قصيرة بعيدًا عن الشاشة",
@@ -147,8 +140,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["حزين", "قلق", "متعب"],
     title: "استقرار وسط التذبذب",
     type: "تنظيم",
-    reason:
-      "تم اختيار هذه التوصية لأن الشعور الحالي محايد لكن النمط متذبذب، لذلك الأولوية الآن للتهدئة والتنظيم لا للضغط والإنجاز الكبير.",
+    reason: "تم اختيار هذه التوصية لأن الشعور الحالي محايد لكن النمط متذبذب، لذلك الأولوية الآن للتهدئة والتنظيم لا للضغط والإنجاز الكبير.",
     quick_steps: [
       "تنفس ببطء: شهيق 4 ثوانٍ وزفير 6 ثوانٍ",
       "اختر خطوة واحدة فقط الآن",
@@ -168,8 +160,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["متعب", "قلق", "لا بأس"],
     title: "احتواء المشاعر بهدوء",
     type: "دعم عاطفي",
-    reason:
-      "تم اختيار هذه التوصية لأن الحزن ظاهر لكن النمط ليس شديد التذبذب، لذا الأنسب هو الاحتواء اللطيف والدعم التدريجي.",
+    reason: "تم اختيار هذه التوصية لأن الحزن ظاهر لكن النمط ليس شديد التذبذب، لذا الأنسب هو الاحتواء اللطيف والدعم التدريجي.",
     quick_steps: [
       "اكتب ما تشعر به لمدة 3 دقائق دون توقف",
       "اسمح لنفسك باستراحة قصيرة بدون تأنيب",
@@ -188,8 +179,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["متعب", "قلق", "لا بأس"],
     title: "دعم عاطفي تدريجي",
     type: "دعم عاطفي",
-    reason:
-      "تم اختيار هذه التوصية لأن الحزن متكرر مع تقلب متوسط، لذلك الأفضل تقديم دعم بسيط ومنتظم بدل الضغط على نفسك.",
+    reason: "تم اختيار هذه التوصية لأن الحزن متكرر مع تقلب متوسط، لذلك الأفضل تقديم دعم بسيط ومنتظم بدل الضغط على نفسك.",
     quick_steps: [
       "تواصل مع شخص تثق به برسالة قصيرة",
       "تحرك أو امشِ 5 دقائق",
@@ -208,8 +198,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["قلق", "متعب", "غاضب"],
     title: "تقليل الضغط العاطفي",
     type: "دعم عاطفي",
-    reason:
-      "تم اختيار هذه التوصية لأن الحزن حاضر مع تذبذب مرتفع، لذلك الأولوية الآن ليست الإنجاز بل تخفيف الحمل العاطفي والتهدئة.",
+    reason: "تم اختيار هذه التوصية لأن الحزن حاضر مع تذبذب مرتفع، لذلك الأولوية الآن ليست الإنجاز بل تخفيف الحمل العاطفي والتهدئة.",
     quick_steps: [
       "تنفس ببطء لدقيقتين",
       "ابتعد عن أي مثير للضغط لفترة قصيرة",
@@ -229,8 +218,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["متعب", "غاضب", "حزين"],
     title: "تهدئة ذهنية خفيفة",
     type: "تهدئة",
-    reason:
-      "تم اختيار هذه التوصية لأن القلق ظاهر بشكل محدود، لذلك الأفضل تهدئته مبكرًا قبل أن يتصاعد.",
+    reason: "تم اختيار هذه التوصية لأن القلق ظاهر بشكل محدود، لذلك الأفضل تهدئته مبكرًا قبل أن يتصاعد.",
     quick_steps: [
       "طبّق تمرين 5-4-3-2-1",
       "اكتب ما يقلقك ثم حدد أصغر خطوة ممكنة",
@@ -249,8 +237,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["متعب", "غاضب", "حزين"],
     title: "تنظيم القلق بخطوات صغيرة",
     type: "تهدئة",
-    reason:
-      "تم اختيار هذه التوصية لأن القلق يتكرر مع نمط متوسط، لذا الأفضل تنظيم اليوم وتقليل التشتيت والمحفزات.",
+    reason: "تم اختيار هذه التوصية لأن القلق يتكرر مع نمط متوسط، لذا الأفضل تنظيم اليوم وتقليل التشتيت والمحفزات.",
     quick_steps: [
       "أغلق الإشعارات 15 دقيقة",
       "خذ نفسًا بطيئًا ثم عد لمهمة واحدة فقط",
@@ -269,8 +256,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["غاضب", "متعب", "حزين"],
     title: "تهدئة عاجلة ولطيفة",
     type: "تهدئة",
-    reason:
-      "تم اختيار هذه التوصية لأن القلق حاضر مع تذبذب مرتفع، لذلك الأولوية هي خفض التحفيز وتهدئة الجسد قبل أي شيء آخر.",
+    reason: "تم اختيار هذه التوصية لأن القلق حاضر مع تذبذب مرتفع، لذلك الأولوية هي خفض التحفيز وتهدئة الجسد قبل أي شيء آخر.",
     quick_steps: [
       "اجلس في مكان أهدأ لدقيقتين",
       "طبّق 5-4-3-2-1 الآن",
@@ -290,8 +276,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["قلق", "متعب", "حزين"],
     title: "تفريغ التوتر بهدوء",
     type: "إدارة انفعال",
-    reason:
-      "تم اختيار هذه التوصية لأن الانفعال موجود لكنه ما زال قابلًا للاحتواء، لذلك الأفضل تفريغه بطريقة آمنة وهادئة.",
+    reason: "تم اختيار هذه التوصية لأن الانفعال موجود لكنه ما زال قابلًا للاحتواء، لذلك الأفضل تفريغه بطريقة آمنة وهادئة.",
     quick_steps: [
       "اشرب ماء قبل أي رد",
       "ابتعد 5 دقائق عن الموقف المزعج",
@@ -310,8 +295,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["قلق", "متعب", "حزين"],
     title: "إدارة الانفعال",
     type: "إدارة انفعال",
-    reason:
-      "تم اختيار هذه التوصية لأن الغضب يتكرر مع نمط غير ثابت تمامًا، لذا الأفضل تهدئة الجسد وتقليل المحفزات.",
+    reason: "تم اختيار هذه التوصية لأن الغضب يتكرر مع نمط غير ثابت تمامًا، لذا الأفضل تهدئة الجسد وتقليل المحفزات.",
     quick_steps: [
       "اكتب سبب انزعاجك دون إرساله لأحد",
       "خفف سرعة كلامك وخذ نفسًا عميقًا",
@@ -330,8 +314,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["قلق", "متعب", "حزين"],
     title: "خفض شدة الانفعال",
     type: "إدارة انفعال",
-    reason:
-      "تم اختيار هذه التوصية لأن شدة الانفعال مرتفعة مع تذبذب واضح، لذا الأولوية الآن لخفض التصعيد واستعادة الهدوء.",
+    reason: "تم اختيار هذه التوصية لأن شدة الانفعال مرتفعة مع تذبذب واضح، لذا الأولوية الآن لخفض التصعيد واستعادة الهدوء.",
     quick_steps: [
       "غادر الموقف المزعج مؤقتًا",
       "تنفس ببطء واشرب ماء",
@@ -351,8 +334,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["لا بأس", "حزين", "قلق"],
     title: "استعادة الطاقة",
     type: "استعادة طاقة",
-    reason:
-      "تم اختيار هذه التوصية لأن التعب ظاهر بشكل خفيف إلى متوسط، لذلك الأفضل إعطاء الجسد والعقل راحة قصيرة فعالة.",
+    reason: "تم اختيار هذه التوصية لأن التعب ظاهر بشكل خفيف إلى متوسط، لذلك الأفضل إعطاء الجسد والعقل راحة قصيرة فعالة.",
     quick_steps: [
       "اشرب ماء أو تناول شيئًا خفيفًا",
       "أرح عينيك من الشاشة 10 دقائق",
@@ -371,8 +353,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["لا بأس", "حزين", "قلق"],
     title: "راحة واسترجاع تركيز",
     type: "استعادة طاقة",
-    reason:
-      "تم اختيار هذه التوصية لأن الإرهاق يتكرر مع نمط متوسط، لذا المطلوب تخفيف المتطلبات واسترجاع التركيز تدريجيًا.",
+    reason: "تم اختيار هذه التوصية لأن الإرهاق يتكرر مع نمط متوسط، لذا المطلوب تخفيف المتطلبات واسترجاع التركيز تدريجيًا.",
     quick_steps: [
       "تمدد لدقيقة ثم اجلس بهدوء",
       "اسمح لنفسك بفاصل قصير بلا ذنب",
@@ -391,8 +372,7 @@ const RECOMMENDATION_DATASET = [
     secondary_moods: ["حزين", "قلق", "لا بأس"],
     title: "تقليل الإرهاق فورًا",
     type: "استعادة طاقة",
-    reason:
-      "تم اختيار هذه التوصية لأن التعب قوي مع تذبذب مرتفع، لذا الأفضل خفض الحمل فورًا والاهتمام بالراحة قبل أي شيء.",
+    reason: "تم اختيار هذه التوصية لأن التعب قوي مع تذبذب مرتفع، لذا الأفضل خفض الحمل فورًا والاهتمام بالراحة قبل أي شيء.",
     quick_steps: [
       "أوقف التشتت وخذ راحة قصيرة الآن",
       "اشرب ماء وتنفس ببطء",
@@ -409,15 +389,12 @@ const RECOMMENDATION_DATASET = [
 /* ============================================================
    Helpers
 ============================================================ */
-/* ---------- دوال المساعدة للتحليل ---------- */
 function normalizeMood(raw) {
   if (!raw) return "غير محدد";
 
-  let m = String(raw).trim();
+  let m = String(raw).trim().replace(/\s+/g, " ");
 
-  // إصلاح "لا بأس"
   if (m.includes("لا بأس") || m === "لا") return "لا بأس";
-
   if (m.includes("سعيد")) return "سعيد";
   if (m.includes("حزين")) return "حزين";
   if (m.includes("غاضب")) return "غاضب";
@@ -441,9 +418,7 @@ function computeVolatility(historyList) {
 
   let changes = 0;
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].dominant !== sorted[i - 1].dominant) {
-      changes++;
-    }
+    if (sorted[i].dominant !== sorted[i - 1].dominant) changes++;
   }
 
   return Math.round((changes / (sorted.length - 1)) * 100);
@@ -455,28 +430,28 @@ function getVolatilityLabel(value) {
   return "منخفض";
 }
 
-function getTopTwoMoods(entryCounts) {
-  const sorted = Object.entries(entryCounts).sort((a, b) => b[1] - a[1]);
+function getTopTwoMoods(counts) {
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   return {
     first: sorted[0]?.[0] || "غير محدد",
     second: sorted[1]?.[0] || null
   };
 }
 
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
 /* ============================================================
-   Firestore Loader (يوميات + إيموجي)
+   Firestore Loader
+   - dominantCounts: للحالة الأساسية
+   - blendedCounts: يدخل secondaryMood بوزن 0.5
 ============================================================ */
 async function loadUnifiedData(days) {
-  const entryCounts = {};
+  const dominantCounts = {};
+  const blendedCounts = {};
   const historyMap = new Map();
 
   const user = firebase.auth().currentUser;
-  if (!user) return { entryCounts, historyList: [] };
+  if (!user) {
+    return { dominantCounts, blendedCounts, historyList: [] };
+  }
 
   const db = firebase.firestore();
   const userRef = db.collection("users").doc(user.uid);
@@ -500,25 +475,39 @@ async function loadUnifiedData(days) {
 
     console.log(`📊 Loaded: ${emojiSnap.size || 0} emoji moods, ${journalSnap.size || 0} journal entries`);
 
+    /* ---- Emoji moods ---- */
     if (emojiSnap && typeof emojiSnap.forEach === "function") {
       emojiSnap.forEach((doc) => {
         const data = doc.data() || {};
-        const mood = normalizeMood(data.mood || data.selectedMood || data.finalMood);
+        const dominantMood = normalizeMood(data.mood || data.selectedMood || data.finalMood);
+
         historyMap.set(doc.id, {
           date: doc.id,
-          dominant: mood,
+          dominant: dominantMood,
+          secondaryMood: null,
           type: "إيموجي ✨"
         });
       });
     }
 
+    /* ---- Journal moods (override same-day emoji if exists) ---- */
     journalSnap.forEach((doc) => {
       const data = doc.data() || {};
-      const mood = normalizeMood(data.finalMood || data.mood);
+      const dominantMood = normalizeMood(data.finalMood || data.mood);
+      const secondaryMoodRaw = normalizeMood(data.secondaryMood);
+
+      const secondaryMood =
+        secondaryMoodRaw !== "غير محدد" && secondaryMoodRaw !== dominantMood
+          ? secondaryMoodRaw
+          : null;
+
       historyMap.set(doc.id, {
         date: doc.id,
-        dominant: mood,
-        type: "يومية 📝"
+        dominant: dominantMood,
+        secondaryMood,
+        type: "يومية 📝",
+        moodCounts: data.moodCounts || {},
+        sentencesDetails: data.sentencesDetails || []
       });
     });
 
@@ -527,13 +516,21 @@ async function loadUnifiedData(days) {
     );
 
     historyList.forEach((item) => {
-      entryCounts[item.dominant] = (entryCounts[item.dominant] || 0) + 1;
+      /* dominant count */
+      dominantCounts[item.dominant] = (dominantCounts[item.dominant] || 0) + 1;
+
+      /* blended count: primary=1, secondary=0.5 */
+      blendedCounts[item.dominant] = (blendedCounts[item.dominant] || 0) + 1;
+
+      if (item.secondaryMood) {
+        blendedCounts[item.secondaryMood] = (blendedCounts[item.secondaryMood] || 0) + 0.5;
+      }
     });
 
-    return { entryCounts, historyList };
+    return { dominantCounts, blendedCounts, historyList };
   } catch (error) {
     console.error("❌ Failed to load unified data:", error);
-    return { entryCounts: {}, historyList: [] };
+    return { dominantCounts: {}, blendedCounts: {}, historyList: [] };
   }
 }
 
@@ -544,9 +541,7 @@ function renderChart(labels, values) {
   const canvas = document.getElementById("moodChart");
   if (!canvas || typeof Chart === "undefined") return;
 
-  if (chartInstance) {
-    chartInstance.destroy();
-  }
+  if (chartInstance) chartInstance.destroy();
 
   chartInstance = new Chart(canvas, {
     type: "bar",
@@ -590,22 +585,38 @@ function renderChart(labels, values) {
 }
 
 /* ============================================================
-   Recommendation Dataset Loader
+   Recommendation Loader
 ============================================================ */
 async function loadRecommendationDataset() {
   try {
     const res = await fetch("anah_recommendations_ar_dataset.json");
     if (!res.ok) throw new Error("dataset fetch failed");
+
     const data = await res.json();
     if (Array.isArray(data) && data.length) {
       console.log("✅ External recommendation dataset loaded");
       return data;
     }
+
     throw new Error("dataset empty");
   } catch (error) {
-    console.warn("⚠️ Using embedded recommendation dataset instead:", error.message);
+    console.warn("⚠️ Using embedded dataset instead:", error.message);
     return RECOMMENDATION_DATASET;
   }
+}
+
+function itemMatchesSecondary(item, secondMood) {
+  if (!secondMood) return false;
+
+  if (Array.isArray(item.secondary_moods)) {
+    return item.secondary_moods.includes(secondMood);
+  }
+
+  if (typeof item.secondary_mood === "string") {
+    return item.secondary_mood === secondMood;
+  }
+
+  return false;
 }
 
 function scoreRecommendation(item, todayMood, secondMood, volatilityLabel) {
@@ -613,9 +624,7 @@ function scoreRecommendation(item, todayMood, secondMood, volatilityLabel) {
 
   if (item.mood === todayMood) score += 5;
   if (item.volatility === volatilityLabel) score += 3;
-  if (Array.isArray(item.secondary_moods) && secondMood && item.secondary_moods.includes(secondMood)) {
-    score += 2;
-  }
+  if (itemMatchesSecondary(item, secondMood)) score += 2;
 
   return score;
 }
@@ -661,8 +670,8 @@ function renderRecommendation(rec, context) {
   `;
 
   quoteEl.textContent = `${rec.title} — ${rec.reason}`;
-  quickEl.innerHTML = rec.quick_steps.map((step) => `<li>${step}</li>`).join("");
-  dailyEl.innerHTML = rec.daily_suggestions.map((step) => `<li>${step}</li>`).join("");
+  quickEl.innerHTML = (rec.quick_steps || []).map((step) => `<li>${step}</li>`).join("");
+  dailyEl.innerHTML = (rec.daily_suggestions || []).map((step) => `<li>${step}</li>`).join("");
 }
 
 /* ============================================================
@@ -677,7 +686,7 @@ async function renderDashboard(days) {
       days === 90 ? "آخر ٩٠ يوم" : `آخر ${days} يوم`;
   }
 
-  const { entryCounts, historyList } = await loadUnifiedData(days);
+  const { dominantCounts, blendedCounts, historyList } = await loadUnifiedData(days);
   const totalEntries = historyList.length;
 
   const listEl = document.getElementById("moodList");
@@ -697,19 +706,22 @@ async function renderDashboard(days) {
     return;
   }
 
-  /* ---- Chart ---- */
-  const labels = MOOD_ORDER.filter((m) => (entryCounts[m] || 0) > 0);
-  const values = labels.map((m) => Math.round(((entryCounts[m] || 0) / totalEntries) * 100));
+  /* ---- Chart uses blended counts (primary + secondary) ---- */
+  const totalWeight = Object.values(blendedCounts).reduce((sum, value) => sum + value, 0) || 1;
+
+  const labels = MOOD_ORDER.filter((m) => (blendedCounts[m] || 0) > 0);
+  const values = labels.map((m) => Math.round(((blendedCounts[m] || 0) / totalWeight) * 100));
+
   renderChart(labels, values);
 
-  /* ---- Top moods ---- */
+  /* ---- Top moods use blended counts too ---- */
   if (topEl) {
-    const topMoods = Object.entries(entryCounts)
+    const topMoods = Object.entries(blendedCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
 
     topEl.innerHTML = topMoods.map(([mood, count]) => {
-      const pct = Math.round((count / totalEntries) * 100);
+      const pct = Math.round((count / totalWeight) * 100);
       return `
         <div class="an-metric">
           <div class="an-metric-label" style="display:flex;align-items:center;gap:10px">
@@ -722,7 +734,7 @@ async function renderDashboard(days) {
     }).join("");
   }
 
-  /* ---- Mood history ---- */
+  /* ---- Mood history shows secondaryMood for journal entries ---- */
   if (listEl) {
     listEl.innerHTML = historyList
       .slice()
@@ -734,6 +746,7 @@ async function renderDashboard(days) {
               <img src="${MOOD_IMAGES[item.dominant]}" style="width:36px" alt="${item.dominant}">
               <div>
                 <strong>${item.dominant}</strong>
+                ${item.secondaryMood ? `<small style="display:block;color:#666;font-size:.72rem">ثانوي: ${item.secondaryMood}</small>` : ""}
                 <small style="display:block;color:#888;font-size:.72rem">المصدر: ${item.type}</small>
               </div>
             </div>
@@ -746,10 +759,16 @@ async function renderDashboard(days) {
 
   /* ---- Recommendation ---- */
   const sortedHistory = historyList.slice().sort((a, b) => a.date.localeCompare(b.date));
-  const todayMood = sortedHistory[sortedHistory.length - 1]?.dominant || "غير محدد";
+  const latestEntry = sortedHistory[sortedHistory.length - 1];
 
-  const topTwo = getTopTwoMoods(entryCounts);
-  const secondMood = topTwo.second || null;
+  const todayMood = latestEntry?.dominant || "غير محدد";
+
+  /* Important:
+     Prefer the real journal secondaryMood from the latest entry.
+     If none exists, fallback to the overall second weighted mood.
+  */
+  const topTwoBlended = getTopTwoMoods(blendedCounts);
+  const secondMood = latestEntry?.secondaryMood || topTwoBlended.second || null;
 
   const volatilityValue = computeVolatility(historyList);
   const volatilityLabel = getVolatilityLabel(volatilityValue);
@@ -779,6 +798,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".an-chip[data-range]").forEach((b) => {
         b.classList.remove("is-active");
       });
+
       btn.classList.add("is-active");
 
       const days = parseInt(btn.dataset.range, 10) || 7;
