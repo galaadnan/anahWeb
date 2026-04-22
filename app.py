@@ -1,3 +1,4 @@
+import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from transformers import pipeline
@@ -23,15 +24,11 @@ BACKUP_MODEL_PATH = os.path.join(BASE_DIR, "ai model", "UBC-NLP_MARBERTv2", "che
 print("⏳ Starting Anah engine...")
 
 try:
-    # 1. First Attempt: Fast cloud model
     pipe = pipeline("text-classification", model=PRIMARY_MODEL, truncation=True)
     print(f"✅ (Plan A): Fast model loaded successfully from {PRIMARY_MODEL}")
-
 except Exception as e1:
     print(f"⚠️ Failed to connect to the fast model, switching to Plan B... Reason: {e1}")
-    
     try:
-        # 2. Plan B: Heavy local model (Backup)
         pipe = pipeline("text-classification", model=BACKUP_MODEL_PATH, tokenizer=BACKUP_MODEL_PATH, truncation=True)
         print("✅✅ (Plan B): Heavy backup model loaded successfully!")
     except Exception as e2:
@@ -42,7 +39,6 @@ except Exception as e1:
 # ------------------------------------------------
 last_emotion_memory = {}
 
-# System prompt is kept in Arabic to instruct the AI to respond in Arabic
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن.
 استخدم لغة فصحى محايدة.
@@ -51,6 +47,13 @@ SYSTEM_PROMPT = """
 أحياناً اختم بسؤال قصير يعزز الوعي الذاتي.
 تجنب المبالغة أو النصائح الطبية.
 """
+
+# ------------------------------------------------
+# 🧩 Helper Functions
+# ------------------------------------------------
+def split_arabic_sentences(text: str):
+    sentences = re.split(r'[.؟!،\n]+', text)
+    return [s.strip() for s in sentences if len(s.strip()) > 3]
 
 # ------------------------------------------------
 # 🌐 Website Routes
@@ -71,14 +74,62 @@ def predict():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    result = pipe(text)[0] 
-    label = result.get("label") or "غير محدد"
-    score = float(result.get("score", 0.0))
+    sentences = split_arabic_sentences(text)
+    if not sentences:
+        sentences = [text]
 
-    return jsonify({
-        "mood": label,
-        "score": score
-    })
+    try:
+        results = pipe(sentences)
+        
+        all_moods = []
+        sentence_details = []
+        
+        # Dictionaries to track frequency and total confidence scores
+        mood_counts = {}
+        mood_scores = {}
+
+        for i, res in enumerate(results):
+            mood = res.get("label", "غير محدد")
+            score = float(res.get("score", 0.0))
+            
+            all_moods.append(mood)
+            mood_counts[mood] = mood_counts.get(mood, 0) + 1
+            mood_scores[mood] = mood_scores.get(mood, 0.0) + score
+            
+            sentence_details.append({
+                "sentence": sentences[i],
+                "mood": mood,
+                "score": score
+            })
+
+        # Sort moods: First by frequency count, then by total confidence score to break ties
+        sorted_moods = sorted(
+            mood_counts.keys(), 
+            key=lambda k: (mood_counts[k], mood_scores[k]), 
+            reverse=True
+        )
+
+        primary_mood = sorted_moods[0] if sorted_moods else "غير محدد"
+        secondary_mood = sorted_moods[1] if len(sorted_moods) > 1 else None
+
+        # --- Debugging Print Statements ---
+        print("\n" + "="*50)
+        print(f"📊 Emotion Frequency (Count) : {mood_counts}")
+        print(f"🎯 Confidence Scores (Sum)   : {mood_scores}")
+        print(f"🥇 Primary Emotion Selected  : {primary_mood}")
+        print(f"🥈 Secondary Emotion Selected: {secondary_mood}")
+        print("="*50 + "\n")
+
+        return jsonify({
+            "finalMood": primary_mood,
+            "secondaryMood": secondary_mood,
+            "moodCounts": mood_counts,
+            "sentencesDetails": sentence_details
+        })
+
+    except Exception as e:
+        print(f"❌ Error during prediction: {e}")
+        return jsonify({"error": "حدث خطأ أثناء تحليل النص"}), 500
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -103,7 +154,6 @@ def chat():
         else:
             prompt = f"المستخدم يشعر بـ {emotion}.\nرسالة المستخدم: {user_message}"
 
-        # Call OpenAI API with timeout
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
@@ -121,9 +171,6 @@ def chat():
         print(f"❌ Error in OpenAI chat: {e}")
         return jsonify({"reply": "خذ لحظة هدوء قصيرة، والتنفس ببطء قد يساعد."})
 
-# ------------------------------------------------
-# 🚀 Run Server
-# ------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     app.run(host="127.0.0.1", port=port, debug=False)
