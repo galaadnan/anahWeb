@@ -5,12 +5,17 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   setGreeting();
-  initQuotes();
+firebase.auth().onAuthStateChanged(async user => {
+  if (user) {
+    await initQuotes();
+  }
+});
   initMoodButtons();
   initTaskSystem(); 
   initChatbot();
   initTodayUI();
 
+  
   // 👇 كود الرسالة هنا
   const openBtn = document.getElementById("openMessageModal");
   const modal = document.getElementById("messageModal");
@@ -73,10 +78,12 @@ if (closeFutureBtn) {
 /* ------------------------------------------------------------
    Helpers
 ------------------------------------------------------------ */
+
 function isoToday() { return new Date().toISOString().split("T")[0]; }
 function safeId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 function $(id) { return document.getElementById(id); }
 function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
 
 /* ------------------------------------------------------------
    0) Date / Header UI
@@ -97,139 +104,145 @@ function setGreeting() {
   else if (h >= 12 && h < 18) el.textContent = "مساء الهدوء";
   else el.textContent = "مساء الخير";
 }
+/* =========================
+   QUOTES SYSTEM (CLEAN)
+========================= */
 
-/* ------------------------------------------------------------
-   2) Quotes
------------------------------------------------------------- */
+// 🔹 متغير عام للاقتباسات
+let quotes = [];
+
+/* -------------------------
+   1) Normalize Mood
+------------------------- */
+function normalizeMood(raw) {
+  if (!raw) return "لا بأس";
+
+  const m = String(raw).trim();
+
+  if (m.includes("سعيد") || m.includes("سعادة") || m.includes("فرح")) return "سعيد";
+  if (m.includes("حزين") || m.includes("حزن")) return "حزين";
+  if (m.includes("قلق") || m.includes("خوف") || m.includes("توتر")) return "قلق";
+
+  return "لا بأس";
+}
+
+/* -------------------------
+   2) Map Tags → Mood
+------------------------- */
+function mapTagToMood(tags) {
+  if (!tags) return "لا بأس";
+
+  if (tags.includes("حزن")) return "حزين";
+  if (tags.includes("قلق")) return "قلق";
+
+  if (
+    tags.includes("سعادة") ||
+    tags.includes("سعيد") ||
+    tags.includes("فرح") ||
+    tags.includes("حب")
+  ) return "سعيد";
+
+  return "لا بأس";
+}
+
+/* -------------------------
+   3) Pick Quote
+------------------------- */
+function pickMoodQuote(mood) {
+  console.log("mood:", mood);
+  console.log("quotes count:", quotes.length);
+
+  const filtered = quotes.filter(q => mapTagToMood(q.tags) === mood);
+
+  console.log("filtered:", filtered.length);
+
+  if (!filtered.length) {
+    return "لا بأس إن لم تجد ما يناسبك الآن 🤍";
+  }
+
+  const random = filtered[Math.floor(Math.random() * filtered.length)];
+  return random.quote;
+}
+
+/* -------------------------
+   4) Get Mood From Analysis
+------------------------- */
+async function getLatestMoodFromFirebase() {
+  const user = firebase.auth().currentUser;
+  if (!user) return "لا بأس";
+
+  const db = firebase.firestore();
+
+  try {
+    const snap = await db
+      .collection("users")
+      .doc(user.uid)
+      .collection("entries")
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+
+    if (snap.empty) return "لا بأس";
+
+    const data = snap.docs[0].data();
+
+    console.log("entry:", data);
+
+    if (!data.mood) return "لا بأس";
+
+    return normalizeMood(data.mood);
+
+  } catch (e) {
+    console.error(e);
+    return "لا بأس";
+  }
+}
+
+/* -------------------------
+   5) Load Quotes CSV
+------------------------- */
+async function loadQuotes() {
+  const url = "https://raw.githubusercontent.com/BoulahiaAhmed/Arabic-Quotes-Dataset/main/Arabic_Quotes.csv";
+
+  const res = await fetch(url);
+  const text = await res.text();
+
+  const lines = text.split("\n").slice(1);
+
+  quotes = lines
+    .map(line => {
+      const parts = line.split(",");
+      return {
+        quote: parts[0]?.replace(/"/g, "").trim(),
+        tags: parts[1]?.toLowerCase() || ""
+      };
+    })
+    .filter(q => q.quote);
+}
+
+/* -------------------------
+   6) Init Quotes
+------------------------- */
 async function initQuotes() {
-  const btn = $("newQuoteBtn");
-  const text = $("quoteText");
-  if (!btn || !text) return;
+  const textEl = document.getElementById("quoteText");
+  const btn = document.getElementById("newQuoteBtn");
 
-  const QUOTES_CSV_URL =
-    "https://raw.githubusercontent.com/BoulahiaAhmed/Arabic-Quotes-Dataset/main/Arabic_Quotes.csv";
+  if (!textEl || !btn) return;
 
-  let quotes = [];
-  let lastQuote = null;
-
-  function parseCSVLine(line) {
-    const result = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      const next = line[i + 1];
-
-      if (char === '"') {
-        if (inQuotes && next === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
-
-  function parseQuotesFromCSV(csvText) {
-    const lines = csvText
-      .split(/\r?\n/)
-      .map(line => line.trim())
-      .filter(Boolean);
-
-    if (!lines.length) return [];
-
-    const header = parseCSVLine(lines[0]);
-    const quoteIndex = header.findIndex(
-      col => col.replace(/^"|"$/g, "").trim().toLowerCase() === "quote"
-    );
-
-    if (quoteIndex === -1) {
-      console.error("Quote column not found in CSV.");
-      return [];
-    }
-
-    const parsedQuotes = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const row = parseCSVLine(lines[i]);
-      const rawQuote = row[quoteIndex];
-      if (!rawQuote) continue;
-
-      const cleaned = rawQuote.replace(/^"|"$/g, "").trim();
-      if (cleaned) parsedQuotes.push(cleaned);
-    }
-
-    return parsedQuotes;
-  }
-
-  function pickRandomQuote() {
-    if (!quotes.length) {
-      return "لا يجب أن يكون يومك مثاليًا حتى يكون مفيدًا.";
-    }
-
-    let q = quotes[Math.floor(Math.random() * quotes.length)];
-
-    if (quotes.length > 1) {
-      while (q === lastQuote) {
-        q = quotes[Math.floor(Math.random() * quotes.length)];
-      }
-    }
-
-    lastQuote = q;
-    return q;
-  }
-
-  async function loadQuotes() {
-    try {
-      text.textContent = "جاري تحميل الاقتباسات...";
-      btn.disabled = true;
-
-      const response = await fetch(QUOTES_CSV_URL);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch CSV: ${response.status}`);
-      }
-
-      const csvText = await response.text();
-      quotes = parseQuotesFromCSV(csvText);
-
-      if (!quotes.length) {
-        throw new Error("No quotes parsed from CSV.");
-      }
-
-      text.textContent = `"${pickRandomQuote()}"`;
-    } catch (error) {
-      console.error("Quotes loading failed:", error);
-
-      quotes = [
-        "لا يجب أن يكون يومك مثاليًا حتى يكون مفيدًا.",
-        "كل خطوة صغيرة تجاه نفسك هي إنجاز يُحسب لك.",
-        "لا بأس لو لم تكن على ما يرام اليوم.",
-        "التقدم الهادئ لا يزال تقدمًا.",
-        "اهدأ… كل شيء يمر."
-      ];
-
-      text.textContent = `"${pickRandomQuote()}"`;
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  btn.addEventListener("click", () => {
-    text.textContent = `"${pickRandomQuote()}"`;
-  });
+  textEl.textContent = "جاري تحميل الاقتباسات...";
 
   await loadQuotes();
+
+  const mood = await getLatestMoodFromFirebase();
+  textEl.textContent = `"${pickMoodQuote(mood)}"`;
+
+  // زر اقتباس جديد
+  btn.onclick = async () => {
+    const mood = await getLatestMoodFromFirebase();
+    textEl.textContent = `"${pickMoodQuote(mood)}"`;
+  };
 }
+
 
 /* ------------------------------------------------------------
    3) Mood Buttons – مع التخيير عبر المودال المخصص (Single Source of Truth)
@@ -297,28 +310,37 @@ function initMoodButtons() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    localStorage.setItem("anah_current_mood", moodName);
     return true;
   }
 
-  const saved = localStorage.getItem("anah_current_mood");
-  if (saved) setHint(saved);
 
   buttons.forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const moodName = btn.dataset.mood || "غير محدد";
-      const success = await performMoodSave(moodName);
-      if (!success) return; 
+   btn.addEventListener("click", async () => {
+  const moodName = btn.dataset.mood || "غير محدد";
 
-      buttons.forEach(b => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      btn.classList.add("pulse");
-      setTimeout(() => btn.classList.remove("pulse"), 220);
-      setHint(moodName);
-    });
-  });
+  const success = await performMoodSave(moodName);
+  if (!success) return;
+
+  buttons.forEach(b => b.classList.remove("is-active"));
+  btn.classList.add("is-active");
+  btn.classList.add("pulse");
+  setTimeout(() => btn.classList.remove("pulse"), 220);
+
+  setHint(moodName);
+
+  const quoteText = document.getElementById("quoteText");
+ if (quoteText) {
+  if (!quotes.length) {
+    await initQuotes(); // حمّلها لو ما كانت جاهزة
+  }
+
+  const latestMood = normalizeMood(moodName);
+  quoteText.textContent = `"${pickMoodQuote(latestMood)}"`;
 }
+});
+}); // ← تقفل forEach
 
+} 
 /* ------------------------------------------------------------
    4) Tasks System
 ------------------------------------------------------------ */
