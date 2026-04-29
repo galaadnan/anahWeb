@@ -117,11 +117,13 @@ let quotes = [];
 function normalizeMood(raw) {
   if (!raw) return "لا بأس";
 
-  const m = String(raw).trim();
+  const m = String(raw).toLowerCase().trim();
 
-  if (m.includes("سعيد") || m.includes("سعادة") || m.includes("فرح")) return "سعيد";
-  if (m.includes("حزين") || m.includes("حزن")) return "حزين";
-  if (m.includes("قلق") || m.includes("خوف") || m.includes("توتر")) return "قلق";
+  if (m.includes("happy") || m.includes("سعيد") || m.includes("فرح")) return "سعيد";
+  if (m.includes("sad") || m.includes("حزين") || m.includes("حزن")) return "حزين";
+  if (m.includes("angry") || m.includes("غاضب")) return "غاضب";
+  if (m.includes("anx") || m.includes("قلق") || m.includes("توتر")) return "قلق";
+  if (m.includes("tired") || m.includes("متعب")) return "متعب";
 
   return "لا بأس";
 }
@@ -129,35 +131,17 @@ function normalizeMood(raw) {
 /* -------------------------
    2) Map Tags → Mood
 ------------------------- */
-function mapTagToMood(tags) {
-  if (!tags) return "لا بأس";
 
-  if (tags.includes("حزن")) return "حزين";
-  if (tags.includes("قلق")) return "قلق";
-
-  if (
-    tags.includes("سعادة") ||
-    tags.includes("سعيد") ||
-    tags.includes("فرح") ||
-    tags.includes("حب")
-  ) return "سعيد";
-
-  return "لا بأس";
-}
 
 /* -------------------------
    3) Pick Quote
 ------------------------- */
 function pickMoodQuote(mood) {
-  console.log("mood:", mood);
-  console.log("quotes count:", quotes.length);
-
-  const filtered = quotes.filter(q => mapTagToMood(q.tags) === mood);
-
-  console.log("filtered:", filtered.length);
+  const filtered = quotes.filter(q => q.mood === mood);
 
   if (!filtered.length) {
-    return "لا بأس إن لم تجد ما يناسبك الآن 🤍";
+    return quotes[Math.floor(Math.random() * quotes.length)]?.quote 
+          || "🤍";
   }
 
   const random = filtered[Math.floor(Math.random() * filtered.length)];
@@ -202,22 +186,15 @@ async function getLatestMoodFromFirebase() {
    5) Load Quotes CSV
 ------------------------- */
 async function loadQuotes() {
-  const url = "https://raw.githubusercontent.com/BoulahiaAhmed/Arabic-Quotes-Dataset/main/Arabic_Quotes.csv";
+  const res = await fetch("anah_quotes_dataset.json");
+  const data = await res.json();
 
-  const res = await fetch(url);
-  const text = await res.text();
+  quotes = data.map(q => ({
+    quote: q.quote,
+    mood: q.mood
+  }));
 
-  const lines = text.split("\n").slice(1);
-
-  quotes = lines
-    .map(line => {
-      const parts = line.split(",");
-      return {
-        quote: parts[0]?.replace(/"/g, "").trim(),
-        tags: parts[1]?.toLowerCase() || ""
-      };
-    })
-    .filter(q => q.quote);
+  console.log("Quotes loaded:", quotes.length);
 }
 
 /* -------------------------
