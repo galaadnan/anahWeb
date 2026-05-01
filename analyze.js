@@ -825,3 +825,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+// كود الجافاسكريبت لتغيير الزر النشط (Active)
+const filterBtns = document.querySelectorAll('.an-chip');
+
+filterBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+        // 1. شيل كلاس 'is-active' من كل الأزرار
+        filterBtns.forEach(b => b.classList.remove('is-active'));
+        
+        // 2. حط كلاس 'is-active' للزر اللي انضغط الحين
+        this.classList.add('is-active');
+
+        // هنا عاد تحطين الكود حق تحديث البيانات بناءً على التاريخ
+        const range = this.getAttribute('data-range');
+        // updateAnalysisData(range); // مثال على دالة تحديث البيانات
+    });
+});
