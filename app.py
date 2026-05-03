@@ -157,7 +157,7 @@ def chat():
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
-            timeout=5,
+            timeout=10,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
