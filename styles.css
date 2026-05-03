@@ -1452,3 +1452,231 @@ main { padding-block: 26px 40px; }
     width: 100%;
   }
 }
+
+/* =========================================================
+   Analyze Page - Recommendation Chips + Why Button Styling
+   ========================================================= */
+
+#recommendationCard {
+  overflow: hidden;
+}
+
+/* سطر الشيبس فوق التوصية */
+#recWeekNote {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+#recWeekNote > span {
+  justify-content: center;
+}
+
+/* الشيبس: نمط 90 يوم / تذبذب / تنفس */
+.rec-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 7px 12px;
+  border-radius: 999px;
+
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.5;
+
+  color: #2b2b38;
+  background:
+    linear-gradient(
+      120deg,
+      rgba(134, 227, 206, 0.28),
+      rgba(204, 171, 216, 0.30),
+      rgba(250, 137, 123, 0.18)
+    ),
+    rgba(255, 255, 255, 0.82);
+
+  border: 1px solid rgba(204, 171, 216, 0.45);
+
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+
+  white-space: normal;
+}
+
+/* زر لماذا هذه التوصية */
+.rec-why-btn {
+  appearance: none;
+  -webkit-appearance: none;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  min-height: 34px;
+  padding: 7px 14px;
+
+  border: none;
+  border-radius: 999px;
+
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+
+  color: #1f1f2f;
+  cursor: pointer;
+
+  background: linear-gradient(120deg, var(--mint), var(--purple));
+  box-shadow:
+    0 10px 22px rgba(204, 171, 216, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.rec-why-btn::before {
+  content: "؟";
+  width: 20px;
+  height: 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.rec-why-btn:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.08);
+  box-shadow:
+    0 14px 28px rgba(134, 227, 206, 0.28),
+    0 12px 28px rgba(204, 171, 216, 0.32);
+}
+
+.rec-why-btn:active {
+  transform: translateY(0);
+}
+
+.rec-why-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px rgba(134, 227, 206, 0.25),
+    0 14px 28px rgba(204, 171, 216, 0.32);
+}
+
+/* صندوق الشرح بعد الضغط */
+.rec-why-box {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px 16px;
+
+  border-radius: 18px;
+  text-align: right;
+
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(134, 227, 206, 0.20),
+      transparent 45%
+    ),
+    rgba(255, 255, 255, 0.74);
+
+  border: 1px solid rgba(204, 171, 216, 0.42);
+
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.rec-why-box[hidden] {
+  display: none !important;
+}
+
+.rec-why-title {
+  margin-bottom: 6px;
+
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: var(--text-main);
+}
+
+.rec-why-body {
+  font-size: 0.84rem;
+  line-height: 1.8;
+  color: var(--text-soft);
+}
+
+/* كرت الاقتباس نفسه */
+.rec-quote {
+  margin: 16px 0;
+  padding: 18px 18px;
+
+  border-radius: 22px;
+  text-align: center;
+
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 2;
+
+  color: var(--text-main);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.78),
+      rgba(255, 255, 255, 0.52)
+    );
+
+  border: 1px solid rgba(204, 171, 216, 0.38);
+
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+/* عناوين خطوات سريعة / اقتراحات لليوم */
+.rec-section {
+  margin-top: 16px;
+}
+
+.rec-section h4 {
+  margin-bottom: 8px;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.rec-section ul {
+  margin: 0;
+  padding-right: 20px;
+}
+
+.rec-section li {
+  margin-bottom: 7px;
+  line-height: 1.8;
+  color: var(--text-soft);
+}
+
+/* للموبايل */
+@media (max-width: 520px) {
+  .rec-chip,
+  .rec-why-btn {
+    width: 100%;
+  }
+
+  #recWeekNote > span {
+    width: 100%;
+  }
+
+  .rec-quote {
+    font-size: 0.95rem;
+  }
+}
