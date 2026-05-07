@@ -18,8 +18,8 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# استبدلي هذا المعرف بالمعرف الجديد الخاص بملف (621MB) من جوجل درايف
-FILE_ID = "1FBS7ZkBoSABvmeKDpNL92o1VWsSTaYpY"
+# تم تحديث المعرف هنا ليتوافق مع رابط الملف الجديد (621MB)
+FILE_ID = "1pbw1krVbn46yPQ8vphbeCqf_mSnsSred"
 MODEL_PATH = "model.onnx"
 
 def download_model():
