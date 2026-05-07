@@ -69,7 +69,7 @@ const dailyPrompts = [
   "تحدي واجهته اليوم وكيف تعاملت معه؟",
   "فكرة أو خاطرة لم تفارق ذهنك اليوم؟",
   "ما هو الشعور الغالب عليك الآن ولماذا؟",
-  "شيء واحد تتمنى إنجازه غداً؟"
+  "شيء واحد تتمنى إنجازه غداً?"
 ];
 
 function initDailyPrompt() {
@@ -88,7 +88,8 @@ function initDailyPrompt() {
 
 async function runLocalAnalysis(text) {
   try {
-    const response = await fetch("http://127.0.0.1:8000/predict", {
+    // تم تحديث الرابط ليتصل بـ Render بدلاً من localhost
+    const response = await fetch("https://anahweb.onrender.com/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
@@ -139,7 +140,7 @@ async function saveTodayEntry() {
       words: wordCount(textContent),
       finalMood: analysis.finalMood,
       secondaryMood: analysis.secondaryMood,
-      moodCounts: analysis.moodCounts,         
+      moodCounts: analysis.moodCounts,          
       sentencesDetails: analysis.sentencesDetails, 
       savedAt: firebase.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -281,7 +282,6 @@ async function initAchievementsUI() {
 
     const totalWords = jSnap.docs.reduce((sum, d) => sum + (Number(d.data()?.words) || 0), 0);
     
-    // إنجاز جديد بدل الـ 5 نجوم: يفتح إذا كتب المستخدم يومية بمشاعر مختلطة
     const hasMixedEmotions = jSnap.docs.some(d => d.data()?.secondaryMood != null);
 
     const achvs = [
@@ -320,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
   
   firebase.auth().onAuthStateChanged((user) => {
     if (user) {
-      setTimeout(() => initAchievementsUI(), 1000); // تأخير بسيط لضمان تحميل البيانات
+      setTimeout(() => initAchievementsUI(), 1000); 
     }
   });
 
