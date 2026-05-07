@@ -1,9 +1,8 @@
 flask
 flask-cors
 openai
-transformers
-torch
 onnxruntime
 gdown
 numpy
+tokenizers
 gunicorn
