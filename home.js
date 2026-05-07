@@ -5,7 +5,7 @@
    ✅ Quotes from dataset + Firebase mood
    ✅ Mood emoji stays selected after refresh
    ✅ Saves mood locally + Firebase
-   ✅ Chatbot
+   ✅ Chatbot (Updated to Render)
    ✅ Future message system
    ✅ IMPORTANT: Task system is handled by chicklist.js
 ============================================================ */
@@ -498,7 +498,8 @@ function initChatbot() {
     inputEl.value = "";
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/chat", {
+      // تم تعديل الرابط ليتصل بـ Render بدلاً من الـ localhost
+      const res = await fetch("https://anahweb.onrender.com/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
