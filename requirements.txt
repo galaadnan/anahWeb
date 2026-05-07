@@ -1,5 +1,9 @@
 flask
 flask-cors
+openai
 transformers
 torch
-openai
+onnxruntime
+gdown
+numpy
+gunicorn
