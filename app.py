@@ -19,20 +19,31 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
 # تم تحديث المعرف هنا ليتوافق مع رابط الملف الجديد (621MB)
-FILE_ID = "1pbw1krVbn46yPQ8vphbeCqf_mSnsSred"
-MODEL_PATH = "model.onnx"
+# 1. تحديث المعرف الجديد للموديل المضغوط
+FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
 
-def download_model():
+# 2. تحديث اسم الملف في المسار ليتوافق مع النسخة المضغوطة
+current_dir = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(current_dir, "model_quantized.onnx")
+
+# 3. تعديل دالة التحميل للتأكد من اسم الملف الجديد
+def download_model_from_drive():
+    """تحميل الموديل المضغوط من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading Anah Full Model (621MB) from Google Drive...")
+        print("⏳ Downloading Quantized Anah Model from Google Drive...")
+        
+        # الرابط المباشر للتحميل باستخدام المعرف الجديد
         url = f'https://drive.google.com/uc?id={FILE_ID}'
+        
         try:
+            # التحميل باستخدام gdown (تأكدي أن الملف متاح لأي شخص لديه الرابط)
             gdown.download(url, MODEL_PATH, quiet=False)
             print("✅ Download Complete!")
         except Exception as e:
             print(f"❌ Download Failed: {e}")
 
-download_model()
+# استدعاء الدالة لبدء التحميل عند تشغيل السيرفر
+download_model_from_drive()
 
 # تحميل التوكنايزر والموديل
 print("⏳ Loading Anah ONNX Engine...")
