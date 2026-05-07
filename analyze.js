@@ -202,11 +202,11 @@ function normalizeMood(raw) {
 }
 
 function moodColor(m) {
-  if (m === "غاضب") return "#ff6b6b";
-  if (m === "سعيد") return "#1dd1a1";
-  if (m === "حزين") return "#54a0ff";
-  if (m === "قلق") return "#ff9f43";
-  if (m === "متعب") return "#feca57";
+  if (m === "غاضب") return "#dd8181";
+  if (m === "سعيد") return "#5fcbae";
+  if (m === "حزين") return "#7aacea";
+  if (m === "قلق") return "#eba96b";
+  if (m === "متعب") return "#ffee6d";
   if (m === "لا بأس") return "#a29bfe";
   return "#ccabd8";
 }
