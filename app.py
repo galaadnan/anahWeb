@@ -1,5 +1,11 @@
 import re
 import os
+
+# --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+# -------------------------------------------------------
+
 import numpy as np
 import gdown
 import threading  # إضافة مكتبة الخيوط للتحميل في الخلفية
@@ -51,8 +57,15 @@ def load_ai_engine():
     try:
         # تحميل التوكنايزر من الملفات المحلية
         tokenizer = AutoTokenizer.from_pretrained(".")
-        # إنشاء جلسة عمل للموديل
-        onnx_session = ort.InferenceSession(MODEL_PATH)
+        
+        # إعدادات تحسين الذاكرة لـ ONNX
+        sess_options = ort.SessionOptions()
+        sess_options.enable_cpu_mem_access_optimization = True
+        sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        # إنشاء جلسة عمل للموديل مع خيارات الذاكرة المنخفضة
+        onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
         print("✅ Local ONNX Model Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model in background: {e}")
