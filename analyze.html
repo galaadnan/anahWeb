@@ -135,7 +135,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="analyze.js?v=unified-final"></script>
+  <script src="analyze.js?v=nified-final"></script>
 
   <!-- الشات بوت -->
   <div class="chatbot-wrapper">
@@ -159,6 +159,15 @@
       </div>
     </div>
   </div>
+
+<!-- 👇 هذا الكود الجديد يدخل الانديكس بدال الرئيسيه-->
+<script>
+  firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "SignOrLogin.html";
+  }
+});
+</script>
 
 </body>
 </html>
