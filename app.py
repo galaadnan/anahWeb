@@ -1,42 +1,71 @@
 import re
+import os
+import numpy as np
+import gdown
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from transformers import pipeline
-import os
 from openai import OpenAI
+import onnxruntime as ort
+from transformers import AutoTokenizer
 
-# Configure server to serve static files (CSS, JS, Images)
+# إعداد السيرفر
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-# Initialize OpenAI client
+# إعداد OpenAI
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# ⚙️ Dual Model System (Primary + Backup)
+# ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-pipe = None
-PRIMARY_MODEL = "raghadddddddd/anahEmotions"
+# استبدلي هذا المعرف بالمعرف الجديد الخاص بملف (621MB) من جوجل درايف
+FILE_ID = "1FBS7ZkBoSABvmeKDpNL92o1VWsSTaYpY"
+MODEL_PATH = "model.onnx"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BACKUP_MODEL_PATH = os.path.join(BASE_DIR, "ai model", "UBC-NLP_MARBERTv2", "checkpoint-1821")
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("⏳ Downloading Anah Full Model (621MB) from Google Drive...")
+        url = f'https://drive.google.com/uc?id={FILE_ID}'
+        try:
+            gdown.download(url, MODEL_PATH, quiet=False)
+            print("✅ Download Complete!")
+        except Exception as e:
+            print(f"❌ Download Failed: {e}")
 
-print("⏳ Starting Anah engine...")
+download_model()
 
+# تحميل التوكنايزر والموديل
+print("⏳ Loading Anah ONNX Engine...")
 try:
-    pipe = pipeline("text-classification", model=PRIMARY_MODEL, truncation=True)
-    print(f"✅ (Plan A): Fast model loaded successfully from {PRIMARY_MODEL}")
-except Exception as e1:
-    print(f"⚠️ Failed to connect to the fast model, switching to Plan B... Reason: {e1}")
+    # سيقرأ التوكنايزر من الملفات المحلية (vocab.txt, الخ)
+    tokenizer = AutoTokenizer.from_pretrained(".")
+    onnx_session = ort.InferenceSession(MODEL_PATH)
+    # القائمة المعتمدة في موديلك الجديد
+    LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
+    print("✅ Local ONNX Model Loaded Successfully!")
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+
+def query_local_model(text_list):
+    results = []
     try:
-        pipe = pipeline("text-classification", model=BACKUP_MODEL_PATH, tokenizer=BACKUP_MODEL_PATH, truncation=True)
-        print("✅✅ (Plan B): Heavy backup model loaded successfully!")
-    except Exception as e2:
-        print(f"❌ Critical Error: Failed to load both models. Check local model path. Reason: {e2}")
-# أضيفي هذا السطر تحت سطر الـ pipe = pipeline(...)
-print(f"📍 المسار الفعلي للموديل: {pipe.model.config._name_or_path}")
+        for text in text_list:
+            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True)
+            ort_inputs = {k: v for k, v in inputs.items()}
+            ort_outs = onnx_session.run(None, ort_inputs)
+            scores = ort_outs[0][0]
+            # تحويل النتائج لنسب (Softmax)
+            exp_scores = np.exp(scores - np.max(scores))
+            probs = exp_scores / exp_scores.sum()
+            best_idx = np.argmax(probs)
+            results.append({"label": LABELS[best_idx], "score": float(probs[best_idx])})
+        return results
+    except Exception as e:
+        print(f"❌ Prediction Error: {e}")
+        return None
+
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt
+# 🧠 Chatbot Memory & Prompt (نسختك كما هي)
 # ------------------------------------------------
 last_emotion_memory = {}
 
@@ -58,129 +87,72 @@ SYSTEM_PROMPT = """
 - لا تقدم تشخيصات أو نصائح طبية.
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
-# ------------------------------------------------
+
 # 🧩 Helper Functions
-# ------------------------------------------------
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
 
-# ------------------------------------------------
 # 🌐 Website Routes
-# ------------------------------------------------
-
 @app.route("/")
 def index():
     return send_from_directory(".", "home.html")
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if pipe is None:
-        return jsonify({"error": "الموديل غير متاح حالياً، يرجى التحقق من التيرمنال"}), 500
-
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
+    if not text: return jsonify({"error": "No text"}), 400
 
-    if not text:
-        return jsonify({"error": "No text provided"}), 400
+    sentences = split_arabic_sentences(text) or [text]
+    results = query_local_model(sentences)
+    if not results: return jsonify({"error": "AI Engine Error"}), 500
 
-    sentences = split_arabic_sentences(text)
-    if not sentences:
-        sentences = [text]
+    mood_counts = {}
+    mood_scores = {}
+    sentence_details = []
 
-    try:
-        results = pipe(sentences)
-        
-        all_moods = []
-        sentence_details = []
-        
-        # Dictionaries to track frequency and total confidence scores
-        mood_counts = {}
-        mood_scores = {}
+    for i, res in enumerate(results):
+        mood = res["label"]
+        score = res["score"]
+        mood_counts[mood] = mood_counts.get(mood, 0) + 1
+        mood_scores[mood] = mood_scores.get(mood, 0.0) + score
+        sentence_details.append({"sentence": sentences[i], "mood": mood, "score": score})
 
-        for i, res in enumerate(results):
-            mood = res.get("label", "غير محدد")
-            score = float(res.get("score", 0.0))
-            
-            all_moods.append(mood)
-            mood_counts[mood] = mood_counts.get(mood, 0) + 1
-            mood_scores[mood] = mood_scores.get(mood, 0.0) + score
-            
-            sentence_details.append({
-                "sentence": sentences[i],
-                "mood": mood,
-                "score": score
-            })
-
-        # Sort moods: First by frequency count, then by total confidence score to break ties
-        sorted_moods = sorted(
-            mood_counts.keys(), 
-            key=lambda k: (mood_counts[k], mood_scores[k]), 
-            reverse=True
-        )
-
-        primary_mood = sorted_moods[0] if sorted_moods else "غير محدد"
-        secondary_mood = sorted_moods[1] if len(sorted_moods) > 1 else None
-
-        # --- Debugging Print Statements ---
-        print("\n" + "="*50)
-        print(f"📊 Emotion Frequency (Count) : {mood_counts}")
-        print(f"🎯 Confidence Scores (Sum)   : {mood_scores}")
-        print(f"🥇 Primary Emotion Selected  : {primary_mood}")
-        print(f"🥈 Secondary Emotion Selected: {secondary_mood}")
-        print("="*50 + "\n")
-
-        return jsonify({
-            "finalMood": primary_mood,
-            "secondaryMood": secondary_mood,
-            "moodCounts": mood_counts,
-            "sentencesDetails": sentence_details
-        })
-
-    except Exception as e:
-        print(f"❌ Error during prediction: {e}")
-        return jsonify({"error": "حدث خطأ أثناء تحليل النص"}), 500
+    sorted_moods = sorted(mood_counts.keys(), key=lambda k: (mood_counts[k], mood_scores[k]), reverse=True)
+    return jsonify({
+        "finalMood": sorted_moods[0],
+        "secondaryMood": sorted_moods[1] if len(sorted_moods) > 1 else None,
+        "moodCounts": mood_counts,
+        "sentencesDetails": sentence_details
+    })
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
-    user_message = data.get("message") or data.get("text") or ""
-    user_message = user_message.strip()
-
-    if len(user_message) < 3:
-        return jsonify({"reply": "اكتب جملة أوضح قليلاً لأتمكن من مساعدتك."})
+    user_message = (data.get("message") or data.get("text") or "").strip()
+    if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        emotion = "غير محدد"
-        if pipe:
-            emotion_result = pipe(user_message)[0]
-            emotion = emotion_result.get("label", "غير محدد")
-
-        previous_emotion = last_emotion_memory.get("last")
+        res = query_local_model([user_message])
+        emotion = res[0]["label"] if res else "غير محدد"
+        
+        prev_emo = last_emotion_memory.get("last")
         last_emotion_memory["last"] = emotion
 
-        if previous_emotion and previous_emotion != emotion:
-            prompt = f"المستخدم كان يشعر بـ {previous_emotion}.\nالآن يشعر بـ {emotion}.\nرسالة المستخدم: {user_message}"
-        else:
-            prompt = f"المستخدم يشعر بـ {emotion}.\nرسالة المستخدم: {user_message}"
+        prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
+        if prev_emo and prev_emo != emotion:
+            prompt = f"المستخدم انتقل من {prev_emo} إلى {emotion}. رسالته: {user_message}"
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
-            timeout=10,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
         )
-        
-        bot_reply = response.choices[0].message.content.strip()
-        return jsonify({"reply": bot_reply})
-
-    except Exception as e:
-        print(f"❌ Error in OpenAI chat: {e}")
-        return jsonify({"reply": "خذ لحظة هدوء قصيرة، والتنفس ببطء قد يساعد."})
+        return jsonify({"reply": response.choices[0].message.content.strip()})
+    except:
+        return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="127.0.0.1", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False)
