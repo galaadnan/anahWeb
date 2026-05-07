@@ -1,19 +1,17 @@
 import re
 import os
-
-# --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-# -------------------------------------------------------
-
 import numpy as np
 import gdown
-import threading  # إضافة مكتبة الخيوط للتحميل في الخلفية
+import threading  
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 import onnxruntime as ort
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer  # تم التغيير للمكتبة الخفيفة
+
+# --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 # إعداد السيرفر
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -25,10 +23,7 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# 1. تحديث المعرف الجديد للموديل المضغوط
 FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
-
-# 2. تحديث اسم الملف في المسار ليتوافق مع النسخة المضغوطة
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(current_dir, "model_quantized.onnx")
 
@@ -37,9 +32,7 @@ onnx_session = None
 tokenizer = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
-# 3. تعديل دالة التحميل للتأكد من اسم الملف الجديد
 def download_model_from_drive():
-    """تحميل الموديل المضغوط من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
         print("⏳ Downloading Quantized Anah Model from Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
@@ -50,13 +43,16 @@ def download_model_from_drive():
             print(f"❌ Download Failed: {e}")
 
 def load_ai_engine():
-    """تحميل المحرك في الخلفية لضمان استجابة السيرفر السريعة لـ Render"""
+    """تحميل المحرك في الخلفية باستخدام التوكنايزر الخفيف"""
     global onnx_session, tokenizer
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine in background...")
     try:
-        # تحميل التوكنايزر من الملفات المحلية
-        tokenizer = AutoTokenizer.from_pretrained(".")
+        # تحميل التوكنايزر الجديد من ملف JSON
+        tokenizer = Tokenizer.from_file("tokenizer.json")
+        # تفعيل القص لضمان عدم تجاوز طول النص المدعوم
+        tokenizer.enable_truncation(max_length=512)
+        tokenizer.enable_padding(length=512) # اختياري لتوحيد طول المدخلات
         
         # إعدادات تحسين الذاكرة لـ ONNX
         sess_options = ort.SessionOptions()
@@ -64,32 +60,45 @@ def load_ai_engine():
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
-        # إنشاء جلسة عمل للموديل مع خيارات الذاكرة المنخفضة
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
-        print("✅ Local ONNX Model Loaded Successfully!")
+        print("✅ Local ONNX Model & Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model in background: {e}")
 
-# بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 threading.Thread(target=load_ai_engine).start()
 
 def query_local_model(text_list):
-    # التأكد من أن الموديل قد تم تحميله قبل الاستخدام
     if onnx_session is None or tokenizer is None:
         print("⚠️ Model is still loading in the background...")
         return None
         
     results = []
     try:
+        # استخراج أسماء المداخل التي يتوقعها موديل ONNX
+        input_names = [inp.name for inp in onnx_session.get_inputs()]
+        
         for text in text_list:
-            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True)
-            ort_inputs = {k: v for k, v in inputs.items()}
+            # تحويل النص باستخدام المكتبة الخفيفة
+            encoded = tokenizer.encode(text)
+            
+            # تجهيز المدخلات بصيغة Numpy Arrays المتوافقة مع ONNX
+            ort_inputs = {}
+            if "input_ids" in input_names:
+                ort_inputs["input_ids"] = np.array([encoded.ids], dtype=np.int64)
+            if "attention_mask" in input_names:
+                ort_inputs["attention_mask"] = np.array([encoded.attention_mask], dtype=np.int64)
+            if "token_type_ids" in input_names:
+                ort_inputs["token_type_ids"] = np.array([encoded.type_ids], dtype=np.int64)
+            
+            # تشغيل المحرك
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
+            
             # تحويل النتائج لنسب (Softmax)
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
+            
             results.append({"label": LABELS[best_idx], "score": float(probs[best_idx])})
         return results
     except Exception as e:
@@ -97,7 +106,7 @@ def query_local_model(text_list):
         return None
 
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt (نسختك كما هي)
+# 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
 last_emotion_memory = {}
 
@@ -120,7 +129,6 @@ SYSTEM_PROMPT = """
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
 
-# 🧩 Helper Functions
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
@@ -132,7 +140,6 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    # التحقق من جاهزية المحرك قبل المعالجة
     if onnx_session is None:
         return jsonify({"error": "المحرك لا يزال قيد التحميل في الخلفية، يرجى المحاولة بعد قليل"}), 503
 
@@ -190,6 +197,5 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    # الحصول على المنفذ من المتغيرات البيئية أو استخدام 8000 افتراضياً
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)
