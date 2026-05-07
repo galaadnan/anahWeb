@@ -2,6 +2,7 @@ import re
 import os
 import numpy as np
 import gdown
+import threading  # إضافة مكتبة الخيوط للتحميل في الخلفية
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
@@ -18,7 +19,6 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# تم تحديث المعرف هنا ليتوافق مع رابط الملف الجديد (621MB)
 # 1. تحديث المعرف الجديد للموديل المضغوط
 FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
 
@@ -26,38 +26,46 @@ FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(current_dir, "model_quantized.onnx")
 
+# متغيرات عالمية للمحرك والتوكنايزر
+onnx_session = None
+tokenizer = None
+LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
+
 # 3. تعديل دالة التحميل للتأكد من اسم الملف الجديد
 def download_model_from_drive():
     """تحميل الموديل المضغوط من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
         print("⏳ Downloading Quantized Anah Model from Google Drive...")
-        
-        # الرابط المباشر للتحميل باستخدام المعرف الجديد
         url = f'https://drive.google.com/uc?id={FILE_ID}'
-        
         try:
-            # التحميل باستخدام gdown (تأكدي أن الملف متاح لأي شخص لديه الرابط)
             gdown.download(url, MODEL_PATH, quiet=False)
             print("✅ Download Complete!")
         except Exception as e:
             print(f"❌ Download Failed: {e}")
 
-# استدعاء الدالة لبدء التحميل عند تشغيل السيرفر
-download_model_from_drive()
+def load_ai_engine():
+    """تحميل المحرك في الخلفية لضمان استجابة السيرفر السريعة لـ Render"""
+    global onnx_session, tokenizer
+    download_model_from_drive()
+    print("⏳ Loading Anah ONNX Engine in background...")
+    try:
+        # تحميل التوكنايزر من الملفات المحلية
+        tokenizer = AutoTokenizer.from_pretrained(".")
+        # إنشاء جلسة عمل للموديل
+        onnx_session = ort.InferenceSession(MODEL_PATH)
+        print("✅ Local ONNX Model Loaded Successfully!")
+    except Exception as e:
+        print(f"❌ Error loading model in background: {e}")
 
-# تحميل التوكنايزر والموديل
-print("⏳ Loading Anah ONNX Engine...")
-try:
-    # سيقرأ التوكنايزر من الملفات المحلية (vocab.txt, الخ)
-    tokenizer = AutoTokenizer.from_pretrained(".")
-    onnx_session = ort.InferenceSession(MODEL_PATH)
-    # القائمة المعتمدة في موديلك الجديد
-    LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
-    print("✅ Local ONNX Model Loaded Successfully!")
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
+# بدء عملية التحميل والتحميل في خيط (Thread) منفصل
+threading.Thread(target=load_ai_engine).start()
 
 def query_local_model(text_list):
+    # التأكد من أن الموديل قد تم تحميله قبل الاستخدام
+    if onnx_session is None or tokenizer is None:
+        print("⚠️ Model is still loading in the background...")
+        return None
+        
     results = []
     try:
         for text in text_list:
@@ -111,6 +119,10 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    # التحقق من جاهزية المحرك قبل المعالجة
+    if onnx_session is None:
+        return jsonify({"error": "المحرك لا يزال قيد التحميل في الخلفية، يرجى المحاولة بعد قليل"}), 503
+
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
@@ -165,5 +177,6 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
+    # الحصول على المنفذ من المتغيرات البيئية أو استخدام 8000 افتراضياً
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)
