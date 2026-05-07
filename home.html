@@ -163,9 +163,45 @@
                       <input id="taskDescription" type="text" placeholder="مثال: شرب ماء، 10 دقائق مشي..." autocomplete="off" />
                     </div>
                     <div class="field task-time-field">
-                      <span class="field-label">المدة (دقائق)</span>
-                      <input id="taskTime" type="number" min="1" max="600" placeholder="15" autocomplete="off" />
-                    </div>
+
+                  <span class="field-label">المدة</span>
+
+                  <div class="duration-picker">
+
+                    <button type="button" class="duration-chip active" data-time="5">
+                      5 د
+                    </button>
+
+                    <button type="button" class="duration-chip" data-time="10">
+                      10 د
+                    </button>
+
+                    <button type="button" class="duration-chip" data-time="15">
+                      15 د
+                    </button>
+
+                    <button type="button" class="duration-chip" data-time="30">
+                      30 د
+                    </button>
+
+                    <button type="button" class="duration-chip" data-time="60">
+                      1 س
+                    </button>
+
+                    <button type="button" class="duration-chip custom-btn">
+                      مخصص
+                    </button>
+
+                  </div>
+
+                  <input
+                    id="customDuration"
+                    class="custom-duration-input"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="مثال: 2 ساعات أو 30 دقيقة"
+                    hidden
+                  />
                   </div>
                   <div class="form-actions">
                     <button id="saveTaskBtn" type="button" class="save-btn">حفظ المهمة</button>

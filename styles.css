@@ -664,6 +664,64 @@ main { padding-block: 26px 40px; }
   border-color: var(--mint) !important;
   opacity: 0.8 !important;
 }
+/* =========================
+   Duration Picker
+========================= */
+
+.duration-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.duration-chip {
+  border: none;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(180, 160, 255, 0.25);
+  color: #5b5476;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(145, 122, 255, 0.08);
+}
+
+.duration-chip:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.95);
+}
+
+.duration-chip.active {
+  background: linear-gradient(135deg, #cbb7ff, #a6e3d8);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 8px 20px rgba(170, 150, 255, 0.28);
+}
+
+.custom-duration-input {
+  margin-top: 12px;
+  width: 100%;
+  border: 1px solid rgba(180, 160, 255, 0.2);
+  background: rgba(255,255,255,0.75);
+  border-radius: 18px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: 0.25s ease;
+  color: #4f4768;
+}
+
+.custom-duration-input:focus {
+  border-color: #b89cff;
+  box-shadow: 0 0 0 4px rgba(184,156,255,0.15);
+  background: white;
+}
 
 /* =========================================================
    HOME: QUOTES & MESSAGES (Right Side)

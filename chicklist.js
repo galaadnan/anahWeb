@@ -31,7 +31,7 @@
 
     const TODAY = isoTodayLocal();
     const STORAGE_KEY = `anah_tasks_${TODAY}`;
-    const MAX_MINUTES = 600;
+    const MAX_DURATION = 999;
 
     function trimStr(value) {
       return String(value ?? "").trim();
@@ -100,7 +100,8 @@
     const taskList = document.getElementById("taskList");
 
     const descInput = document.getElementById("taskDescription");
-    const timeInput = document.getElementById("taskTime");
+    const customInput = document.getElementById("customDuration");
+    const chips = document.querySelectorAll(".duration-chip");
     const taskTimeError = document.getElementById("taskTimeError");
 
     const emojiButtons = document.querySelectorAll("#emojiSelector .emoji");
@@ -122,8 +123,8 @@
       !newTaskContainer ||
       !saveTaskBtn ||
       !taskList ||
-      !descInput ||
-      !timeInput
+      !descInput 
+   
     ) {
       console.error("❌ Missing required DOM elements for checklist.");
       return;
@@ -135,9 +136,10 @@
 
     let selectedEmoji = "☀️";
     let editingTaskId = null;
+    let selectedDuration = 5;
 
     const DEFAULT_TIME_MODAL_TEXT =
-      "يجب تحديد وقت تقريبي للمهمة (بالدقائق).<br>اكتب رقمًا فقط (مثلاً: 15).";
+      "حدد وقتًا تقريبيًا للمهمة.<br>اكتب رقمًا فقط (مثلاً: 15).";
 
     /* =========================
        3) Storage
@@ -211,24 +213,56 @@
 
     function clearInlineErrors() {
       if (taskTimeError) taskTimeError.textContent = "";
-      timeInput.removeAttribute("aria-invalid");
       descInput.removeAttribute("aria-invalid");
     }
 
     function setInlineTimeError(message) {
       if (taskTimeError) taskTimeError.textContent = message;
-      timeInput.setAttribute("aria-invalid", "true");
     }
 
     function resetForm() {
       editingTaskId = null;
       saveTaskBtn.textContent = "حفظ المهمة";
       descInput.value = "";
-      timeInput.value = "";
+      selectedDuration = 5;
+
+      chips.forEach(c => c.classList.remove("active"));
+
+      chips[0]?.classList.add("active");
+
+      customInput.hidden = true;
+      customInput.value = "";
+
       setActiveEmoji("☀️");
       clearInlineErrors();
       resetTimeModalText();
     }
+
+      chips.forEach((chip) => {
+
+        chip.addEventListener("click", () => {
+
+          chips.forEach(c => c.classList.remove("active"));
+
+          chip.classList.add("active");
+
+          if (chip.classList.contains("custom-btn")) {
+            selectedDuration = null;
+
+            customInput.hidden = false;
+            customInput.focus();
+
+          } else {
+
+            customInput.hidden = true;
+            customInput.value = "";
+
+            selectedDuration = Number(chip.dataset.time);
+          }
+
+        });
+
+      });
 
     // الفورم يبدأ مخفي
     showForm(false);
@@ -419,7 +453,28 @@
 
         editingTaskId = task.id;
         descInput.value = task.description || "";
-        timeInput.value = String(task.minutes || "");
+        selectedDuration = task.minutes || 5;
+
+        chips.forEach(c => c.classList.remove("active"));
+
+        const matchingChip = [...chips].find(
+          chip => Number(chip.dataset.time) === selectedDuration
+        );
+
+        if (matchingChip) {
+
+          matchingChip.classList.add("active");
+
+          customInput.hidden = true;
+          customInput.value = "";
+
+        } else {
+
+          customInput.hidden = false;
+          customInput.value = selectedDuration;
+
+          document.querySelector(".custom-btn")?.classList.add("active");
+        }
         setActiveEmoji(task.emoji || "☀️");
 
         saveTaskBtn.textContent = "تحديث المهمة";
@@ -440,31 +495,55 @@
       clearInlineErrors();
 
       const description = trimStr(descInput.value);
-      const minutesRaw = trimStr(timeInput.value);
-      const normalizedMinutes = normalizeDigits(minutesRaw);
-      const minutes = parseInt(normalizedMinutes, 10);
+      let minutes;
 
+      if (!customInput.hidden) {
+
+      const durationText = normalizeDigits(trimStr(customInput.value));
+
+      const numberMatch = durationText.match(/\d+/);
+
+      let value = numberMatch ? parseInt(numberMatch[0], 10) : NaN;
+
+      if (
+        durationText.includes("ساعة") ||
+        durationText.includes("ساعه") ||
+        durationText.includes("س")
+      ) {
+
+        minutes = value * 60;
+
+      } else {
+
+        minutes = value;
+      }
+
+      } else {
+
+        minutes = selectedDuration;
+
+      }
       if (!description) {
         descInput.setAttribute("aria-invalid", "true");
         openModal(emptyModal);
         return;
       }
 
-      if (!normalizedMinutes || Number.isNaN(minutes) || minutes <= 0) {
-        setInlineTimeError("اكتبي مدة صحيحة بالدقائق.");
+      if (Number.isNaN(minutes) || minutes <= 0) {
+        setInlineTimeError("اكتب مدة مناسبة.");
         openModal(timeModal);
         return;
       }
 
-      if (minutes > MAX_MINUTES) {
-        setInlineTimeError(`الحد الأعلى هو ${MAX_MINUTES} دقيقة.`);
+      if (minutes > MAX_DURATION){
+        setInlineTimeError(`الحد الأعلى هو ${MAX_DURATION}`);
 
         if (timeModal) {
           const body = timeModal.querySelector(".time-body");
 
           if (body) {
             body.innerHTML =
-              `المدة القصوى للمهمة الواحدة هي ${MAX_MINUTES} دقيقة.<br>قسّميها لمهام أصغر.`;
+              `المدة القصوى للمهمة الواحدة هي ${MAX_DURATION}.`;
           }
         }
 
