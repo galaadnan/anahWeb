@@ -48,15 +48,14 @@ def load_ai_engine():
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine in background...")
     try:
-        # تحميل التوكنايزر الجديد من ملف JSON
+        # قراءة الملف الخفيف
         tokenizer = Tokenizer.from_file("tokenizer.json")
-        # تفعيل القص لضمان عدم تجاوز طول النص المدعوم
         tokenizer.enable_truncation(max_length=512)
-        tokenizer.enable_padding(length=512) # اختياري لتوحيد طول المدخلات
+        tokenizer.enable_padding(length=512) 
         
-        # إعدادات تحسين الذاكرة لـ ONNX
+        # إعدادات تحسين الذاكرة لـ ONNX (متوافقة مع Render)
         sess_options = ort.SessionOptions()
-        sess_options.enable_cpu_mem_access_optimization = True
+        sess_options.enable_mem_pattern = False  # إيقاف نمط الذاكرة لتوفير المساحة
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
