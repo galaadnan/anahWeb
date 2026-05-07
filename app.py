@@ -13,7 +13,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 import onnxruntime as ort
-from transformers import AutoTokenizer
+from tokenizers import Tokenizer
 
 # إعداد السيرفر
 app = Flask(__name__, static_folder='.', static_url_path='')
