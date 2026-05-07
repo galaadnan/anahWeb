@@ -33,7 +33,8 @@ except Exception as e1:
         print("✅✅ (Plan B): Heavy backup model loaded successfully!")
     except Exception as e2:
         print(f"❌ Critical Error: Failed to load both models. Check local model path. Reason: {e2}")
-
+# أضيفي هذا السطر تحت سطر الـ pipe = pipeline(...)
+print(f"📍 المسار الفعلي للموديل: {pipe.model.config._name_or_path}")
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
