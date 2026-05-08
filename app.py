@@ -23,6 +23,7 @@ def download_model_from_drive():
             print("✅ Download Complete!")
         except Exception as e:
             print(f"❌ Download Failed: {e}")
+            raise e
 
 def load_ai_engine():
     global onnx_session, tokenizer
@@ -30,9 +31,8 @@ def load_ai_engine():
     print("⏳ Loading Anah ONNX Engine (CPU Optimized)...")
     try:
         # تحميل التوكنايزر
-        if not os.path.exists("./marbert_tokenizer"):
-            raise Exception("❌ marbert_tokenizer folder not found")
-        tokenizer = AutoTokenizer.from_pretrained("./marbert_tokenizer")
+        
+        tokenizer = AutoTokenizer.from_pretrained(current_dir)
         
         # إعدادات الجلسة لتحسين الذاكرة ومنع أخطاء التوافق
         sess_options = ort.SessionOptions()
@@ -50,6 +50,7 @@ def load_ai_engine():
         print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model: {e}")
+        raise e
 
 # تحميل المحرك مرة وحدة عند تشغيل السيرفر
 load_ai_engine()
