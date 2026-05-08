@@ -4,10 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Page title displayed in the browser tab -->
     <title>أناه | تسجيل الدخول أو إنشاء حساب</title>
 
-    <!-- Main stylesheet for layout and styling -->
     <link rel="stylesheet" href="styles.css" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,43 +17,39 @@
   </head>
 
   <body class="page-auth has-animated-bg">
-
-    <!-- Animated background blobs for visual enhancement -->
     <div class="bg-blobs">
       <div class="blob mint"></div>
       <div class="blob peach"></div>
       <div class="blob purple"></div>
     </div>
 
-    <!-- Main site header and navigation -->
     <header class="site-header">
       <div class="shell">
         <nav class="nav">
-          <!-- BRAND -->
           <a href="index.html" class="brand">
             <img src="images/anah.jpeg" alt="anah logo" class="brand-icon" />
             <span>أناه</span>
           </a>
 
-          <!-- NAV LINKS -->
           <ul class="nav-links">
-            <li><a href="index.html#about" class="anim-underline">عن أناه</a></li>
-
-            <li><a href="index.html#features" class="anim-underline">المزايا</a></li>
-            <li><a href="index.html#flow" class="anim-underline">كيف يعمل</a></li>
-            <li><a href="team.html" class="anim-underline">فريق أناه</a></li>
+            <li>
+              <a href="index.html#about" class="anim-underline">عن أناه</a>
+            </li>
+            <li>
+              <a href="index.html#features" class="anim-underline">المزايا</a>
+            </li>
+            <li>
+              <a href="index.html#flow" class="anim-underline">كيف يعمل</a>
+            </li>
+            <li>
+              <a href="team.html" class="anim-underline">فريق أناه</a>
+            </li>
           </ul>
-
-        
-          
         </nav>
       </div>
     </header>
 
-    <!-- Main split layout for auth page -->
     <main class="auth-split">
-
-      <!-- Left panel with image and overlay text -->
       <div class="auth-image-panel slide-right">
         <div class="image-inner">
           <img src="images/img3.gif" alt="Emotional Space" />
@@ -66,89 +60,145 @@
         </div>
       </div>
 
-      <!-- Right panel for login/signup forms -->
       <section class="auth-panel-wrapper slide-right">
         <div class="auth-card dark-glass-card anim-glass-in">
-
-          <!-- Tabs for switching between Login and Signup -->
           <div class="auth-tabs">
-            <button class="auth-tab active" data-target="login-panel">تسجيل الدخول</button>
-            <button class="auth-tab" data-target="signup-panel">إنشاء حساب</button>
+            <button class="auth-tab active" data-target="login-panel" type="button">
+              تسجيل الدخول
+            </button>
+            <button class="auth-tab" data-target="signup-panel" type="button">
+              إنشاء حساب
+            </button>
+          </div>
+
+          <!-- Google Account Sign-In -->
+          <button
+            id="googleLoginBtn"
+            type="button"
+            class="auth-btn-main"
+            style="margin-bottom: 14px;"
+          >
+            المتابعة باستخدام حساب Google
+          </button>
+
+          <div
+            style="display:flex;align-items:center;gap:10px;margin:10px 0 18px;color:#777;font-size:.85rem;"
+          >
+            <span style="height:1px;background:rgba(0,0,0,.12);flex:1;"></span>
+            <span>أو باستخدام Gmail وكلمة مرور</span>
+            <span style="height:1px;background:rgba(0,0,0,.12);flex:1;"></span>
           </div>
 
           <!-- LOGIN FORM -->
           <form id="login-panel" class="auth-panel active" novalidate>
             <h1 class="auth-title">مرحبًا بعودتك</h1>
-            <p class="auth-sub">أدخل بريدك وكلمة المرور للمتابعة.</p>
+            <p class="auth-sub">استخدمي حساب Gmail للمتابعة.</p>
 
-            <!-- Email input field -->
             <div class="field">
               <label for="login-email">البريد الإلكتروني</label>
               <div class="input">
-                <input id="login-email" type="email" placeholder="name@email.com" required />
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="name@gmail.com"
+                  autocomplete="email"
+                  required
+                />
               </div>
             </div>
 
-            <!-- Password input field with peek toggle -->
             <div class="field">
               <label for="login-password">كلمة المرور</label>
               <div class="input">
-                <input id="login-password" type="password" placeholder="••••••••" required />
-                <button class="peek" type="button">
-                  <img src="images/eyebrow.png" class="peek-icon" alt="إظهار كلمة المرور" />
+                <input
+                  id="login-password"
+                  type="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                />
+                <button class="peek" type="button" aria-label="إظهار كلمة المرور">
+                  <img
+                    src="images/eyebrow.png"
+                    class="peek-icon"
+                    alt="إظهار كلمة المرور"
+                  />
                 </button>
               </div>
             </div>
 
-            <!-- Remember me checkbox and forgot password link -->
             <div class="row between">
-              <label class="tick"><input type="checkbox" id="remember-me" /> تذكّرني</label>
+              <label class="tick">
+                <input type="checkbox" id="remember-me" />
+                تذكّرني
+              </label>
               <a class="link" href="#" id="forgot-password-link">نسيت كلمة المرور؟</a>
             </div>
 
-            <!-- Submit button -->
-            <button type="submit" class="auth-btn-main">دخول</button>
+            <button id="loginSubmitBtn" type="submit" class="auth-btn-main">
+              دخول
+            </button>
 
-            <!-- Switch to signup form -->
             <p class="auth-switch">
               ليس لديك حساب؟
-              <button class="swap-btn" data-swap="signup">إنشاء حساب</button>
+              <button class="swap-btn" data-swap="signup" type="button">
+                إنشاء حساب
+              </button>
             </p>
           </form>
 
           <!-- SIGNUP FORM -->
           <form id="signup-panel" class="auth-panel" novalidate>
             <h1 class="auth-title">إنشاء حساب جديد</h1>
-            <p class="auth-sub">ابدأ رحلتك مع أناه الآن.</p>
+            <p class="auth-sub">يُسمح فقط ببريد Gmail.</p>
 
-            <!-- Name input -->
             <div class="field">
               <label for="signup-name">الاسم الكامل</label>
               <div class="input">
-                <input id="signup-name" type="text" required />
+                <input
+                  id="signup-name"
+                  type="text"
+                  autocomplete="name"
+                  required
+                />
               </div>
             </div>
 
-            <!-- Email input -->
             <div class="field">
               <label for="signup-email">البريد الإلكتروني</label>
               <div class="input">
-                <input id="signup-email" type="email" required />
+                <input
+                  id="signup-email"
+                  type="email"
+                  placeholder="name@gmail.com"
+                  autocomplete="email"
+                  required
+                />
               </div>
             </div>
 
-            <!-- Password input with peek toggle and strength meter -->
             <div class="field">
               <label for="signup-password">كلمة المرور</label>
               <div class="input">
-                <input id="signup-password" type="password" required />
-                <button class="peek" type="button">
-                  <img src="images/eyebrow.png" class="peek-icon" alt="إظهار كلمة المرور" />
+                <input
+                  id="signup-password"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+                <button class="peek" type="button" aria-label="إظهار كلمة المرور">
+                  <img
+                    src="images/eyebrow.png"
+                    class="peek-icon"
+                    alt="إظهار كلمة المرور"
+                  />
                 </button>
               </div>
+
               <div class="password-strength" id="signup-strength">
                 <span class="pw-label">
-                  قوة كلمة المرور: <span id="signup-strength-text">—</span>
+                  قوة كلمة المرور:
+                  <span id="signup-strength-text">—</span>
                 </span>
                 <div class="pw-bar">
                   <span class="pw-bar-fill"></span>
@@ -156,64 +206,83 @@
               </div>
             </div>
 
-            <!-- Password confirmation -->
             <div class="field">
               <label for="signup-password-confirm">تأكيد كلمة المرور</label>
               <div class="input">
-                <input id="signup-password-confirm" type="password" required />
-                <button class="peek" type="button">
-                  <img src="images/eyebrow.png" class="peek-icon" alt="إظهار كلمة المرور" />
+                <input
+                  id="signup-password-confirm"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                />
+                <button class="peek" type="button" aria-label="إظهار كلمة المرور">
+                  <img
+                    src="images/eyebrow.png"
+                    class="peek-icon"
+                    alt="إظهار كلمة المرور"
+                  />
                 </button>
               </div>
             </div>
 
-            <!-- Submit button -->
-            <button type="submit" class="auth-btn-main">إنشاء حساب</button>
+            <button id="signupSubmitBtn" type="submit" class="auth-btn-main">
+              إنشاء حساب
+            </button>
 
-            <!-- Switch to login form -->
             <p class="auth-switch">
               لديك حساب؟
-              <button class="swap-btn" data-swap="signup">تسجيل الدخول</button>
+              <button class="swap-btn" data-swap="login" type="button">
+                تسجيل الدخول
+              </button>
             </p>
           </form>
         </div>
       </section>
     </main>
 
-    <!-- Modal for authentication errors -->
+    <!-- Error Modal -->
     <div id="authErrorModal" class="journal-modal" hidden>
       <div class="journal-modal-dialog dialog-centered">
         <div class="modal-icon">
           <img src="images/error.png" alt="تنبيه" class="modal-icon-img" />
         </div>
         <h3 class="modal-title">تنبيه</h3>
-        <p class="modal-body" id="authErrorMessage" style="margin-bottom: 20px; color: #555;">
+        <p
+          class="modal-body"
+          id="authErrorMessage"
+          style="margin-bottom: 20px; color: #555;"
+        >
           بيانات الدخول غير صحيحة.
         </p>
-        <button id="closeAuthError" class="pill-button pill-primary full-width"
-          style="background: #ff6b6b; color: white; box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);">
+        <button
+          id="closeAuthError"
+          class="pill-button pill-primary full-width"
+          style="background: #ff6b6b; color: white; box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);"
+        >
           حاول مرة أخرى
         </button>
       </div>
     </div>
-<div id="successModal" class="journal-modal" hidden>
-  <div class="journal-modal-dialog dialog-centered" style="max-width: 380px;">
-    
-    <div class="modal-icon" style="font-size: 3rem; margin-bottom: 10px;">🎉</div>
-    
-    <h3 class="modal-title">تمت العملية بنجاح!</h3>
-    
-    <p class="modal-body" style="margin-bottom: 20px; color: #555;">
-      تم إنشاء حسابك بنجاح. يمكنك الآن تسجيل الدخول والبدء في رحلتك.
-    </p>
-    
-    <button id="closeSuccessModal" class="pill-button pill-primary full-width">
-      تسجيل الدخول
-    </button>
-    
-  </div>
-</div>
-    <!-- Footer section -->
+
+    <!-- Success Modal -->
+    <div id="successModal" class="journal-modal" hidden>
+      <div class="journal-modal-dialog dialog-centered" style="max-width: 380px;">
+        <div class="modal-icon" style="font-size: 3rem; margin-bottom: 10px;">
+          🎉
+        </div>
+
+        <h3 class="modal-title">تمت العملية بنجاح!</h3>
+
+        <p class="modal-body" style="margin-bottom: 20px; color: #555;">
+          تم إنشاء حسابك بنجاح. يمكنك الآن تسجيل الدخول والبدء في رحلتك.
+        </p>
+
+        <button id="closeSuccessModal" class="pill-button pill-primary full-width">
+          تسجيل الدخول
+        </button>
+      </div>
+    </div>
+
     <footer class="site-footer">
       <div class="shell footer-row">
         <div class="footer-left">
@@ -225,7 +294,6 @@
           <span class="footer-tagline"> مساحة صغيرة تهتم بمشاعرك بلطف. </span>
         </div>
 
-        <!-- Footer navigation links -->
         <nav class="footer-links">
           <a href="index.html#about">عن أناه</a>
           <span class="footer-dot">·</span>
@@ -236,15 +304,12 @@
       </div>
     </footer>
 
-    <!-- Linked JavaScript for auth functionality -->
-    <script src="signOrlogin.js"></script>
+    <!-- Firebase must load BEFORE signOrlogin.js -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    
-    <script src="firebase-config.js"></script>
 
+    <script src="firebase-config.js"></script>
     <script src="signOrlogin.js"></script>
   </body>
 </html>
-  
