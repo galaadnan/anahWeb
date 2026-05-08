@@ -1,25 +1,7 @@
 # ------------------------------------------------
-# 1. استيراد المكتبات اللازمة (تم إضافة os هنا)
-# ------------------------------------------------
-import os
-import re
-import requests
-import numpy as np
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from openai import OpenAI
-
-# إعداد السيرفر
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
-
-# إعداد OpenAI
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-# ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
-# الرابط الصحيح (8 حبات d)
+# الرابط الصحيح (8 حبات d كما في حسابك)
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
 
 # سحب التوكن من إعدادات ريندر
@@ -37,31 +19,44 @@ def query_model_api(text_list):
             return None
 
         for text in text_list:
-            response = requests.post(
-                API_URL, 
-                headers=headers, 
-                json={"inputs": text, "options": {"wait_for_model": True}}
-            )
+            # إضافة سطر options لإجبار السيرفر على انتظار الموديل حتى يجهز
+            payload = {
+                "inputs": text,
+                "options": {"wait_for_model": True, "use_cache": False}
+            }
             
+            response = requests.post(API_URL, headers=headers, json=payload)
+            
+            # معالجة حالة الموديل جاري التحميل (503)
+            if response.status_code == 503:
+                print("⏳ Model is loading... Please wait.")
+                return "loading"
+            
+            # معالجة حالة الـ 404 أو أي خطأ آخر
             if response.status_code != 200:
                 print(f"⚠️ API Error: {response.status_code} - {response.text}")
                 return None
                 
             output = response.json()
             
+            # معالجة استجابة Hugging Face
             if isinstance(output, list) and len(output) > 0:
+                # التأكد من الوصول للمصفوفة الصحيحة سواء كانت متداخلة أو بسيطة
                 predictions = output[0] if isinstance(output[0], list) else output
+                
+                # الحصول على أعلى سكور
                 top_prediction = max(predictions, key=lambda x: x['score'])
                 
                 results.append({
                     "label": top_prediction['label'],
                     "score": float(top_prediction['score'])
                 })
+                
         return results if results else None
+
     except Exception as e:
         print(f"❌ Exception during API call: {e}")
         return None
-
 # تأكدي أن باقي دوال Flask (مثل @app.route) موجودة أسفل هذا الكود
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
