@@ -65,7 +65,16 @@ def load_ai_engine():
         print("✅ Local ONNX Model & Transformers Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model: {e}")
+# متغير لضمان تشغيل التحميل مرة واحدة فقط
+is_loading_started = False
 
+@app.before_request
+def trigger_loading_in_worker():
+    global is_loading_started
+    # بمجرد دخول أول مستخدم للموقع، يبدأ التحميل داخل الذاكرة الصحيحة
+    if not is_loading_started:
+        is_loading_started = True
+        threading.Thread(target=load_ai_engine).start()
 
 # بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 def query_local_model(text_list):
