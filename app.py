@@ -1,4 +1,22 @@
 # ------------------------------------------------
+# 1. استيراد المكتبات اللازمة (تم إضافة os هنا)
+# ------------------------------------------------
+import os
+import re
+import requests
+import numpy as np
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from openai import OpenAI
+
+# إعداد السيرفر
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)
+
+# إعداد OpenAI
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+# ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
 # الرابط الصحيح (8 حبات d)
@@ -7,36 +25,31 @@ API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotion
 # سحب التوكن من إعدادات ريندر
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
-# إعداد الهوية (المفتاح) لاستخدامه في الطلبات
+# إعداد الهوية (المفتاح)
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query_model_api(text_list):
     """إرسال طلب لـ Hugging Face API باستخدام التوكن الموثق"""
     results = []
     try:
-        # التأكد من وجود التوكن قبل البدء
         if not HF_TOKEN:
             print("❌ Error: HF_TOKEN is missing in Environment Variables!")
             return None
 
         for text in text_list:
-            # إرسال طلب POST مع الـ headers (المفتاح) والـ options (الانتظار)
             response = requests.post(
                 API_URL, 
-                headers=headers, # تم إضافة المفتاح هنا لضمان عمل الـ API
+                headers=headers, 
                 json={"inputs": text, "options": {"wait_for_model": True}}
             )
             
-            # التأكد من نجاح الطلب
             if response.status_code != 200:
                 print(f"⚠️ API Error: {response.status_code} - {response.text}")
                 return None
                 
             output = response.json()
             
-            # معالجة استجابة Hugging Face
             if isinstance(output, list) and len(output) > 0:
-                # الحصول على التوقعات (Handles both list of lists and single list)
                 predictions = output[0] if isinstance(output[0], list) else output
                 top_prediction = max(predictions, key=lambda x: x['score'])
                 
@@ -49,6 +62,7 @@ def query_model_api(text_list):
         print(f"❌ Exception during API call: {e}")
         return None
 
+# تأكدي أن باقي دوال Flask (مثل @app.route) موجودة أسفل هذا الكود
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
