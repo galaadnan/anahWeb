@@ -1,8 +1,8 @@
 flask
 flask-cors
 gdown
-numpy==1.25.2
-onnxruntime==1.16.0
+numpy
+onnxruntime
 transformers
 openai
 setuptools
