@@ -17,12 +17,13 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
+# 1. الرابط البرمجي (تأكدي من عدد الـ d هو 8 حبات)
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
 
-# سحب التوكن من إعدادات ريندر (Environment Variables) بدلاً من كتابته يدوياً
+# 2. سحب التوكن من إعدادات ريندر
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
-# إرسال التوكن في الـ headers بشكل آمن
+# 3. إعداد الهوية (المفتاح)
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 # هذا السطر هو اللي يرسل التوكن للهغينغ فيس مع كل طلب
 def query_model_api(text_list):
