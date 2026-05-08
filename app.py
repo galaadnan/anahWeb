@@ -1,44 +1,22 @@
-import re
-import os
-import numpy as np
-import gdown
-import threading  # إضافة مكتبة الخيوط للتحميل في الخلفية
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from openai import OpenAI
-import onnxruntime as ort
-from transformers import AutoTokenizer  # العودة لاستخدام AutoTokenizer
-
-# --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-# -------------------------------------------------------
-
-# إعداد السيرفر
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
-
-# إعداد OpenAI
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# 1. المعرف الخاص بالموديل الجديد (النسخة التي تم إصلاحها keep_io_types)
+# 1. المعرف الخاص بالموديل الجديد (نسخة FP16 المصلحة)
 FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
 
-# 2. تحديد المسار المطلق للموديل الجديد
+# 2. تحديد المسار واسم الملف المصلح
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
 
 # متغيرات عالمية للمحرك والتوكنايزر
 onnx_session = None
 tokenizer = None
+# تأكدي أن الترتيب يطابق مخرجات الموديل في كولاب
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
 # 3. دالة التحميل من جوجل درايف
 def download_model_from_drive():
-    """تحميل الموديل المصلح من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
+    """تحميل الموديل المصلح من جوجل درايف إذا لم يكن موجوداً"""
     if not os.path.exists(MODEL_PATH):
         print("⏳ Downloading Fixed FP16 Anah Model from Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
@@ -53,7 +31,7 @@ def load_ai_engine():
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine...")
     try:
-        # تحميل قاموس MARBERT الأصلي لضمان فهم الكلمات بدقة
+        # تحميل القاموس (Tokenizer)
         tokenizer = AutoTokenizer.from_pretrained("UBC-NLP/MARBERT")
         
         sess_options = ort.SessionOptions()
@@ -61,12 +39,13 @@ def load_ai_engine():
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
+        # تحميل الموديل المصلح
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
         print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model: {e}")
 
-# متغير لضمان تشغيل التحميل مرة واحدة فقط عند أول زيارة للموقع
+# متغير لضمان تشغيل التحميل مرة واحدة فقط
 is_loading_started = False
 
 @app.before_request
@@ -78,8 +57,9 @@ def trigger_loading_in_worker():
 
 # دالة الاستعلام وتحليل النصوص
 def query_local_model(text_list):
+    # التأكد أن الموديل والتوكنايزر جاهزين
     if onnx_session is None or tokenizer is None:
-        print("⚠️ Model is not loaded.")
+        print("⚠️ Model is not loaded yet. Waiting for engine...")
         return None
         
     results = []
@@ -90,19 +70,22 @@ def query_local_model(text_list):
             # تحويل النص باستخدام قاموس MARBERT
             inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
             
-            # التوافق مع نوع int64
+            # إجبار أنواع البيانات على int64 لتوافق مداخل BERT
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
             # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
             
-            # حساب الاحتمالات
+            # حساب الاحتمالات (Softmax)
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
             
-            results.append({"label": LABELS[best_idx], "score": float(probs[best_idx])})
+            results.append({
+                "label": LABELS[best_idx], 
+                "score": float(probs[best_idx])
+            })
         return results
     except Exception as e:
         print(f"❌ Prediction Error: {e}")
