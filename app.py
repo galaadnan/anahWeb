@@ -2,16 +2,17 @@ import re
 import os
 import numpy as np
 import gdown
-import threading  
+import threading  # إضافة مكتبة الخيوط للتحميل في الخلفية
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 import onnxruntime as ort
-from tokenizers import Tokenizer  # تم التغيير للمكتبة الخفيفة
+from transformers import AutoTokenizer  # العودة لاستخدام AutoTokenizer
 
 # --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
+# -------------------------------------------------------
 
 # إعداد السيرفر
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -23,7 +24,10 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
+# 1. المعرف الخاص بالموديل المضغوط
 FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
+
+# 2. تحديد المسار المطلق للموديل
 current_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(current_dir, "model_quantized.onnx")
 
@@ -32,7 +36,9 @@ onnx_session = None
 tokenizer = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
+# 3. دالة التحميل من جوجل درايف
 def download_model_from_drive():
+    """تحميل الموديل المضغوط من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
         print("⏳ Downloading Quantized Anah Model from Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
@@ -43,51 +49,46 @@ def download_model_from_drive():
             print(f"❌ Download Failed: {e}")
 
 def load_ai_engine():
-    """تحميل المحرك في الخلفية باستخدام التوكنايزر الخفيف"""
+    """تحميل المحرك في الخلفية لضمان استجابة السيرفر السريعة لـ Render"""
     global onnx_session, tokenizer
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine in background...")
     try:
-        # قراءة الملف الخفيف
-        tokenizer = Tokenizer.from_file("tokenizer.json")
-        tokenizer.enable_truncation(max_length=512)
-        tokenizer.enable_padding(length=512) 
+        # تحميل التوكنايزر باستخدام transformers من الملفات المحلية
+        tokenizer = AutoTokenizer.from_pretrained(current_dir, local_files_only=True)
         
-        # إعدادات تحسين الذاكرة لـ ONNX (متوافقة مع Render)
+        # إعدادات تحسين الذاكرة لـ ONNX
         sess_options = ort.SessionOptions()
-        sess_options.enable_mem_pattern = False  # إيقاف نمط الذاكرة لتوفير المساحة
+        sess_options.enable_mem_pattern = False
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
+        # إنشاء جلسة عمل للموديل
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
-        print("✅ Local ONNX Model & Tokenizer Loaded Successfully!")
+        print("✅ Local ONNX Model & Transformers Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model in background: {e}")
 
+# بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 threading.Thread(target=load_ai_engine).start()
 
 def query_local_model(text_list):
+    # التأكد من أن الموديل قد تم تحميله قبل الاستخدام
     if onnx_session is None or tokenizer is None:
         print("⚠️ Model is still loading in the background...")
         return None
         
     results = []
     try:
-        # استخراج أسماء المداخل التي يتوقعها موديل ONNX
+        # استخراج أسماء المداخل المطلوبة للموديل
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # تحويل النص باستخدام المكتبة الخفيفة
-            encoded = tokenizer.encode(text)
+            # تحويل النص باستخدام transformers
+            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True)
             
-            # تجهيز المدخلات بصيغة Numpy Arrays المتوافقة مع ONNX
-            ort_inputs = {}
-            if "input_ids" in input_names:
-                ort_inputs["input_ids"] = np.array([encoded.ids], dtype=np.int64)
-            if "attention_mask" in input_names:
-                ort_inputs["attention_mask"] = np.array([encoded.attention_mask], dtype=np.int64)
-            if "token_type_ids" in input_names:
-                ort_inputs["token_type_ids"] = np.array([encoded.type_ids], dtype=np.int64)
+            # تجهيز المداخل المتوافقة مع أسماء المداخل في موديل ONNX
+            ort_inputs = {k: v for k, v in inputs.items() if k in input_names}
             
             # تشغيل المحرك
             ort_outs = onnx_session.run(None, ort_inputs)
@@ -105,7 +106,7 @@ def query_local_model(text_list):
         return None
 
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt
+# 🧠 Chatbot Memory & Prompt (نسختك كما هي)
 # ------------------------------------------------
 last_emotion_memory = {}
 
@@ -128,6 +129,7 @@ SYSTEM_PROMPT = """
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
 
+# 🧩 Helper Functions
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
@@ -139,6 +141,7 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    # التحقق من جاهزية المحرك قبل المعالجة
     if onnx_session is None:
         return jsonify({"error": "المحرك لا يزال قيد التحميل في الخلفية، يرجى المحاولة بعد قليل"}), 503
 
