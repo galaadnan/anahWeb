@@ -219,20 +219,36 @@ async function getLatestMoodFromFirebase() {
   }
 
   try {
-    const snap = await firebase
-      .firestore()
+    const db = firebase.firestore();
+    const today = isoToday();
+
+    // 1️⃣ الأولوية لليومية
+    const journalDoc = await db
       .collection("users")
       .doc(user.uid)
       .collection("entries")
-      .orderBy("createdAt", "desc")
-      .limit(1)
+      .doc(today)
       .get();
 
-    if (snap.empty) {
-      return normalizeMood(localMood);
+    if (journalDoc.exists) {
+      return normalizeMood(journalDoc.data()?.finalMood);
     }
 
-    return normalizeMood(snap.docs[0].data().mood || localMood);
+    // 2️⃣ بعدها الإيموجي
+    const emojiDoc = await db
+      .collection("users")
+      .doc(user.uid)
+      .collection("emoji_moods")
+      .doc(today)
+      .get();
+
+    if (emojiDoc.exists) {
+      return normalizeMood(emojiDoc.data()?.mood);
+    }
+
+    // 3️⃣ fallback أخير
+    return normalizeMood(localMood);
+
   } catch (error) {
     console.error("Could not get latest mood:", error);
     return normalizeMood(localMood);
@@ -275,7 +291,7 @@ function ensureMoodHint() {
     hint.style.cssText =
       "margin:10px 0 0;color:#666;font-size:.95rem;text-align:center;";
 
-    const card = document.querySelector(".mood-card");
+    const card = document.querySelector(".mood-card-top");
     if (card) card.appendChild(hint);
   }
 
@@ -358,6 +374,17 @@ async function restoreEmojiMoodFromFirebase(user) {
 
   try {
     const today = isoToday();
+    const journalDoc = await firebase
+      .firestore()
+      .collection("users")
+      .doc(user.uid)
+      .collection("entries")
+      .doc(today)
+      .get();
+
+    if (journalDoc.exists) {
+      return;
+    }
 
     const doc = await firebase
       .firestore()
@@ -388,9 +415,28 @@ function initMoodButtons() {
   // Restore immediately from localStorage after refresh
   const savedMood = localStorage.getItem("anah_current_mood");
 
-  if (savedMood) {
-    setActiveMoodUI(savedMood, false);
-  }
+  firebase.auth().onAuthStateChanged(async (user) => {
+    if (!user) return;
+
+    const today = isoToday();
+
+    const journalDoc = await firebase
+      .firestore()
+      .collection("users")
+      .doc(user.uid)
+      .collection("entries")
+      .doc(today)
+      .get();
+
+    if (journalDoc.exists) {
+      localStorage.removeItem("anah_current_mood");
+      return;
+    }
+
+    if (savedMood) {
+      setActiveMoodUI(savedMood, false);
+    }
+  });
 
   buttons.forEach((btn) => {
     btn.setAttribute("aria-pressed", "false");
