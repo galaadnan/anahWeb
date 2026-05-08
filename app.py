@@ -49,52 +49,46 @@ def download_model_from_drive():
             print(f"❌ Download Failed: {e}")
 
 def load_ai_engine():
-    """تحميل المحرك في الخلفية لضمان استجابة السيرفر السريعة لـ Render"""
     global onnx_session, tokenizer
     download_model_from_drive()
-    print("⏳ Loading Anah ONNX Engine in background...")
+    print("⏳ Loading Anah ONNX Engine...")
     try:
-        # تحميل التوكنايزر باستخدام transformers من الملفات المحلية
-        tokenizer = AutoTokenizer.from_pretrained(current_dir, local_files_only=True)
+        # إزالة local_files_only=True لضمان تحميل التوكنايزر بشكل صحيح
+        tokenizer = AutoTokenizer.from_pretrained(current_dir)
         
-        # إعدادات تحسين الذاكرة لـ ONNX
         sess_options = ort.SessionOptions()
         sess_options.enable_mem_pattern = False
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
-        # إنشاء جلسة عمل للموديل
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
         print("✅ Local ONNX Model & Transformers Tokenizer Loaded Successfully!")
     except Exception as e:
-        print(f"❌ Error loading model in background: {e}")
+        print(f"❌ Error loading model: {e}")
 
+# من الأفضل إلغاء الـ threading إذا كنت تختبره محلياً أو إذا كان يسبب لك مشاكل:
+# threading.Thread(target=load_ai_engine).start() 
+load_ai_engine() # تحميل مباشر مثل الكود الأول
 # بدء عملية التحميل والتحميل في خيط (Thread) منفصل
-threading.Thread(target=load_ai_engine).start()
-
 def query_local_model(text_list):
-    # التأكد من أن الموديل قد تم تحميله قبل الاستخدام
     if onnx_session is None or tokenizer is None:
-        print("⚠️ Model is still loading in the background...")
+        print("⚠️ Model is not loaded.")
         return None
         
     results = []
     try:
-        # استخراج أسماء المداخل المطلوبة للموديل
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # تحويل النص باستخدام transformers
-            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True)
+            # إضافة Padding و Max Length تماماً كما في الكود الأول لضمان التوافق
+            inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
             
-            # تجهيز المداخل المتوافقة مع أسماء المداخل في موديل ONNX
-            ort_inputs = {k: v for k, v in inputs.items() if k in input_names}
+            # إعادة إضافة تحويل int64 المهم جداً لمحرك ONNX
+            ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
-            # تشغيل المحرك
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
             
-            # تحويل النتائج لنسب (Softmax)
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
@@ -104,7 +98,6 @@ def query_local_model(text_list):
     except Exception as e:
         print(f"❌ Prediction Error: {e}")
         return None
-
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt (نسختك كما هي)
 # ------------------------------------------------
