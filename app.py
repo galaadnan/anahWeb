@@ -5,9 +5,21 @@ import gdown
 import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from openai import OpenAI
 import onnxruntime as ort
 from transformers import AutoTokenizer
 
+# --- تقييد استهلاك الذاكرة قبل استيراد المكتبات الثقيلة ---
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+# -------------------------------------------------------
+
+# إعداد السيرفر
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)
+
+# إعداد OpenAI (تأكدي أن المفتاح موجود في Variables في ريندر)
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
@@ -22,7 +34,6 @@ MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
 # متغيرات عالمية للمحرك والتوكنايزر
 onnx_session = None
 tokenizer = None
-# تأكدي أن الترتيب يطابق مخرجات الموديل في كولاب
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
 # 3. دالة التحميل من جوجل درايف
@@ -56,7 +67,6 @@ def load_ai_engine():
     except Exception as e:
         print(f"❌ Error loading model: {e}")
 
-# متغير لضمان تشغيل التحميل مرة واحدة فقط
 is_loading_started = False
 
 @app.before_request
@@ -68,7 +78,6 @@ def trigger_loading_in_worker():
 
 # دالة الاستعلام وتحليل النصوص
 def query_local_model(text_list):
-    # التأكد أن الموديل والتوكنايزر جاهزين
     if onnx_session is None or tokenizer is None:
         print("⚠️ Model is not loaded yet. Waiting for engine...")
         return None
@@ -78,17 +87,13 @@ def query_local_model(text_list):
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # تحويل النص باستخدام قاموس MARBERT
             inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
-            
-            # إجبار أنواع البيانات على int64 لتوافق مداخل BERT
+            # إجبار نوع int64 للتوافق مع الموديل المصلح
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
-            # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
             
-            # حساب الاحتمالات (Softmax)
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
@@ -101,31 +106,17 @@ def query_local_model(text_list):
     except Exception as e:
         print(f"❌ Prediction Error: {e}")
         return None
+
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt (نسختك كما هي)
+# 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
 last_emotion_memory = {}
 
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
-
-التعليمات:
-- استخدم لغة عربية فصحى بسيطة وطبيعية.
-- لا تجعل جميع الردود بنفس الطول.
-- إذا كانت رسالة المستخدم قصيرة، اجعل الرد مختصراً.
-- إذا عبّر المستخدم بتفاصيل أو مشاعر أعمق، يمكن أن يكون الرد أطول قليلاً.
-- ابدأ بتفهم واضح ولمسة تعاطف هادئة.
-- اقترح خطوة عملية بسيطة عندما يكون ذلك مناسباً.
-- لا تنهِ كل رد بسؤال.
-- استخدم السؤال فقط إذا كان سيساعد بشكل طبيعي على فهم المستخدم أو دعمه.
-- أحياناً يكفي رد داعم دون أي سؤال.
-- تجنب التكرار والردود النمطية.
-- لا تبالغ في التعاطف أو الدرامية.
-- لا تقدم تشخيصات أو نصائح طبية.
-- اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
+استخدم لغة عربية فصحى بسيطة، كن متعاطفاً وغير مبالغ، ولا تقدم نصائح طبية.
 """
 
-# 🧩 Helper Functions
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
@@ -137,9 +128,8 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    # التحقق من جاهزية المحرك قبل المعالجة
     if onnx_session is None:
-        return jsonify({"error": "المحرك لا يزال قيد التحميل في الخلفية، يرجى المحاولة بعد قليل"}), 503
+        return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
 
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
@@ -177,14 +167,9 @@ def chat():
     try:
         res = query_local_model([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
-        
-        prev_emo = last_emotion_memory.get("last")
         last_emotion_memory["last"] = emotion
 
         prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
-        if prev_emo and prev_emo != emotion:
-            prompt = f"المستخدم انتقل من {prev_emo} إلى {emotion}. رسالته: {user_message}"
-
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
@@ -195,5 +180,6 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    # ريندر يستخدم بورت 10000 عادة
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
