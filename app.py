@@ -8,6 +8,10 @@ from openai import OpenAI
 import onnxruntime as ort
 from transformers import AutoTokenizer
 
+app = Flask(__name__)
+CORS(app)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
@@ -17,7 +21,7 @@ FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
 
 # 2. تحديد المسار المطلق للموديل
 current_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
+MODEL_PATH = os.path.join(current_dir, "model.onnx")
 
 # متغيرات عالمية
 onnx_session = None
