@@ -66,8 +66,6 @@ def load_ai_engine():
     except Exception as e:
         print(f"❌ Error loading model: {e}")
 
-# من الأفضل إلغاء الـ threading إذا كنت تختبره محلياً أو إذا كان يسبب لك مشاكل:
-threading.Thread(target=load_ai_engine).start() 
 
 # بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 def query_local_model(text_list):
