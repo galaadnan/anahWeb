@@ -66,7 +66,7 @@ def download_model_from_drive():
         print(f"❌ Error loading model: {e}")
 
 # من الأفضل إلغاء الـ threading إذا كنت تختبره محلياً أو إذا كان يسبب لك مشاكل:
- threading.Thread(target=load_ai_engine).start() 
+threading.Thread(target=load_ai_engine).start() 
 # بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 def query_local_model(text_list):
     if onnx_session is None or tokenizer is None:
