@@ -1,23 +1,23 @@
 import os
+import re # تم إضافة الاستيراد المفقود
 import requests
-from flask import Flask, request, jsonify
+import numpy as np
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from openai import OpenAI
 
-app = Flask(__name__)
+# إعداد السيرفر
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-
+# إعداد OpenAI
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
-# الرابط الصحيح (8 حبات d كما في حسابك)
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
-
-# سحب التوكن من إعدادات ريندر
 HF_TOKEN = os.environ.get("HF_TOKEN")
-
-# إعداد الهوية (المفتاح)
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query_model_api(text_list):
@@ -29,7 +29,6 @@ def query_model_api(text_list):
             return None
 
         for text in text_list:
-            # إضافة سطر options لإجبار السيرفر على انتظار الموديل حتى يجهز
             payload = {
                 "inputs": text,
                 "options": {"wait_for_model": True, "use_cache": False}
@@ -37,37 +36,28 @@ def query_model_api(text_list):
             
             response = requests.post(API_URL, headers=headers, json=payload)
             
-            # معالجة حالة الموديل جاري التحميل (503)
             if response.status_code == 503:
                 print("⏳ Model is loading... Please wait.")
                 return "loading"
             
-            # معالجة حالة الـ 404 أو أي خطأ آخر
             if response.status_code != 200:
                 print(f"⚠️ API Error: {response.status_code} - {response.text}")
                 return None
                 
             output = response.json()
             
-            # معالجة استجابة Hugging Face
             if isinstance(output, list) and len(output) > 0:
-                # التأكد من الوصول للمصفوفة الصحيحة سواء كانت متداخلة أو بسيطة
                 predictions = output[0] if isinstance(output[0], list) else output
-                
-                # الحصول على أعلى سكور
                 top_prediction = max(predictions, key=lambda x: x['score'])
-                
                 results.append({
                     "label": top_prediction['label'],
                     "score": float(top_prediction['score'])
                 })
-                
         return results if results else None
-
     except Exception as e:
         print(f"❌ Exception during API call: {e}")
         return None
-# تأكدي أن باقي دوال Flask (مثل @app.route) موجودة أسفل هذا الكود
+
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
@@ -85,9 +75,13 @@ def split_arabic_sentences(text: str):
 def index():
     return send_from_directory(".", "home.html")
 
+# إضافة مسار لكل ملفات الـ HTML عشان تشتغل الروابط
+@app.route("/<path:filename>")
+def static_files(filename):
+    return send_from_directory(".", filename)
+
 @app.route("/predict", methods=["POST"])
 def predict():
-    # التحليل المباشر عبر الـ API
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
@@ -95,8 +89,11 @@ def predict():
     sentences = split_arabic_sentences(text) or [text]
     results = query_model_api(sentences)
     
+    if results == "loading":
+        return jsonify({"error": "الموديل قيد التحميل، جرب ثانية بعد ثوانٍ"}), 503
+
     if not results:
-        return jsonify({"error": "الموديل قيد التحميل أو هناك مشكلة في الاتصال"}), 503
+        return jsonify({"error": "هناك مشكلة في الاتصال بالموديل"}), 500
 
     mood_counts = {}
     mood_scores = {}
@@ -125,9 +122,10 @@ def chat():
     if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        # تحليل الشعور عبر الـ API لتحديد نبرة الرد
         res = query_model_api([user_message])
-        emotion = res[0]["label"] if res else "غير محدد"
+        emotion = "غير محدد"
+        if isinstance(res, list) and len(res) > 0:
+            emotion = res[0]["label"]
 
         prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
         response = client.chat.completions.create(
@@ -140,6 +138,5 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    # ريندر يستخدم بورت 10000 عادة
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
