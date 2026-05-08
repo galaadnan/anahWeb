@@ -1,43 +1,33 @@
-# Updated: May 8, 2026 - Final Stable Version without Hugging Face Token
-import os
-import re
-import requests
-import numpy as np
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from openai import OpenAI
-
-# إعداد السيرفر
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
-
-# إعداد OpenAI (تأكدي أن المفتاح موجود في إعدادات رندر باسم OPENAI_API_KEY)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
 # ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
-# الرابط لازم يكون كذا بالتمام والكمال
+# الرابط الصحيح (8 حبات d)
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
 
-# 2. سحب التوكن من إعدادات ريندر
+# سحب التوكن من إعدادات ريندر
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
-# 3. إعداد الهوية (المفتاح)
+# إعداد الهوية (المفتاح) لاستخدامه في الطلبات
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-# هذا السطر هو اللي يرسل التوكن للهغينغ فيس مع كل طلب
+
 def query_model_api(text_list):
-    """إرسال طلب لـ Hugging Face API مباشرة بدون استخدام توكن"""
+    """إرسال طلب لـ Hugging Face API باستخدام التوكن الموثق"""
     results = []
     try:
+        # التأكد من وجود التوكن قبل البدء
+        if not HF_TOKEN:
+            print("❌ Error: HF_TOKEN is missing in Environment Variables!")
+            return None
+
         for text in text_list:
-            # إرسال طلب POST مباشر للموديل العام
+            # إرسال طلب POST مع الـ headers (المفتاح) والـ options (الانتظار)
             response = requests.post(
                 API_URL, 
+                headers=headers, # تم إضافة المفتاح هنا لضمان عمل الـ API
                 json={"inputs": text, "options": {"wait_for_model": True}}
             )
             
-            # التأكد من نجاح الطلب (كود 200)
+            # التأكد من نجاح الطلب
             if response.status_code != 200:
                 print(f"⚠️ API Error: {response.status_code} - {response.text}")
                 return None
@@ -46,7 +36,7 @@ def query_model_api(text_list):
             
             # معالجة استجابة Hugging Face
             if isinstance(output, list) and len(output) > 0:
-                # الحصول على قائمة التوقعات وترتيبها للأعلى سكور
+                # الحصول على التوقعات (Handles both list of lists and single list)
                 predictions = output[0] if isinstance(output[0], list) else output
                 top_prediction = max(predictions, key=lambda x: x['score'])
                 
@@ -56,7 +46,7 @@ def query_model_api(text_list):
                 })
         return results if results else None
     except Exception as e:
-        print(f"❌ API Error: {e}")
+        print(f"❌ Exception during API call: {e}")
         return None
 
 # ------------------------------------------------
