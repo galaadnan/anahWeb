@@ -48,6 +48,7 @@ def download_model_from_drive():
         except Exception as e:
             print(f"❌ Download Failed: {e}")
 
+def load_ai_engine():
     global onnx_session, tokenizer
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine...")
@@ -67,6 +68,7 @@ def download_model_from_drive():
 
 # من الأفضل إلغاء الـ threading إذا كنت تختبره محلياً أو إذا كان يسبب لك مشاكل:
 threading.Thread(target=load_ai_engine).start() 
+
 # بدء عملية التحميل والتحميل في خيط (Thread) منفصل
 def query_local_model(text_list):
     if onnx_session is None or tokenizer is None:
