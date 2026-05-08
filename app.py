@@ -1,127 +1,58 @@
-# Updated: May 8, 2026 - Final Stable Version for Anah
+# Updated: May 8, 2026 - Final Stable Version using Hugging Face API
 import os
 import re
+import requests
 import numpy as np
-import gdown
-import threading
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
-import onnxruntime as ort
-from transformers import AutoTokenizer
 
-# --- إعداد السيرفر الأساسي (يجب أن يكون هنا لتعريف app) ---
+# إعداد السيرفر
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
-
-# تقييد استهلاك الذاكرة لبيئة ريندر (512MB)
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
 
 # إعداد OpenAI
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# ⚙️ ONNX Engine & Google Drive Integration
+# 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
-# 1. المعرف الخاص بالموديل (نسخة FP16 المصلحة)
-FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
+# رابط الموديل الخاص بك على Hugging Face
+API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
+# تأكدي من إضافة مفتاح HF_TOKEN في إعدادات رندر (Environment Variables)
+HF_TOKEN = os.environ.get("HF_TOKEN")
+headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
-# 2. تحديد المسار المطلق للموديل
-current_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
-
-# متغيرات عالمية
-onnx_session = None
-tokenizer = None
-LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
-
-# 3. دالة التحميل
-def download_model_from_drive():
-    if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading Fixed FP16 Anah Model...")
-        url = f'https://drive.google.com/uc?id={FILE_ID}'
-        try:
-            gdown.download(url, MODEL_PATH, quiet=False)
-            print("✅ Download Complete!")
-        except Exception as e:
-            print(f"❌ Download Failed: {e}")
-
-def load_ai_engine():
-    global onnx_session, tokenizer
-    download_model_from_drive()
-    print("⏳ Loading Anah ONNX Engine (CPU Optimized)...")
-    try:
-        # تحميل التوكنايزر من MARBERT
-        tokenizer = AutoTokenizer.from_pretrained("UBC-NLP/MARBERT")
-        
-        # إعدادات الجلسة لتحسين الذاكرة ومنع أخطاء التوافق
-        sess_options = ort.SessionOptions()
-        sess_options.enable_mem_pattern = False
-        sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        
-        # إجبار العمل على CPU فقط لتفادي أخطاء الـ GPU في ريندر
-        onnx_session = ort.InferenceSession(
-            MODEL_PATH, 
-            sess_options, 
-            providers=['CPUExecutionProvider']
-        )
-        print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
-    except Exception as e:
-        print(f"❌ Error loading model: {e}")
-
-is_loading_started = False
-
-@app.before_request
-def trigger_loading_in_worker():
-    global is_loading_started
-    if not is_loading_started:
-        is_loading_started = True
-        threading.Thread(target=load_ai_engine).start()
-
-# 🧪 دالة الاستعلام وتحليل النصوص
-def query_local_model(text_list):
-    if onnx_session is None or tokenizer is None:
-        print("⚠️ Model is not loaded yet.")
-        return None
-        
+def query_model_api(text_list):
+    """إرسال طلب لـ Hugging Face API بدلاً من المحرك المحلي"""
     results = []
     try:
-        input_names = [inp.name for inp in onnx_session.get_inputs()]
-        
         for text in text_list:
-            # تحويل النص لمدخلات (Tokenization)
-            inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
+            response = requests.post(
+                API_URL, 
+                headers=headers, 
+                json={"inputs": text, "options": {"wait_for_model": True}}
+            )
+            output = response.json()
             
-            # إجبار كل المدخلات (input_ids, attention_mask, token_type_ids) تكون int64
-            # هذا هو الحل الجذري للـ TypeError
-            ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
-            
-            # تشغيل التوقع
-            ort_outs = onnx_session.run(None, ort_inputs)
-            scores = ort_outs[0][0]
-            
-            # حساب الاحتمالات باستخدام Softmax:
-            # $$\sigma(z)_i = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}}$$
-            exp_scores = np.exp(scores - np.max(scores))
-            probs = exp_scores / exp_scores.sum()
-            best_idx = np.argmax(probs)
-            
-            results.append({
-                "label": LABELS[best_idx], 
-                "score": float(probs[best_idx])
-            })
-        return results
+            # معالجة استجابة Hugging Face (غالباً تكون قائمة داخل قائمة)
+            if isinstance(output, list) and len(output) > 0:
+                # ترتيب النتائج للحصول على الأعلى سكور
+                predictions = output[0] if isinstance(output[0], list) else output
+                top_prediction = max(predictions, key=lambda x: x['score'])
+                
+                results.append({
+                    "label": top_prediction['label'],
+                    "score": float(top_prediction['score'])
+                })
+        return results if results else None
     except Exception as e:
-        print(f"❌ Prediction Error: {e}")
+        print(f"❌ API Error: {e}")
         return None
 
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
-last_emotion_memory = {}
-
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
 استخدم لغة عربية فصحى بسيطة، كن متعاطفاً وغير مبالغ، ولا تقدم نصائح طبية.
@@ -138,16 +69,16 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if onnx_session is None:
-        return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
-
+    # لا حاجة لانتظار التحميل هنا لأننا نستخدم API
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
 
     sentences = split_arabic_sentences(text) or [text]
-    results = query_local_model(sentences)
-    if not results: return jsonify({"error": "AI Engine Error"}), 500
+    results = query_model_api(sentences)
+    
+    if not results:
+        return jsonify({"error": "الموديل قيد التحميل أو هناك مشكلة في الاتصال"}), 503
 
     mood_counts = {}
     mood_scores = {}
@@ -161,6 +92,7 @@ def predict():
         sentence_details.append({"sentence": sentences[i], "mood": mood, "score": score})
 
     sorted_moods = sorted(mood_counts.keys(), key=lambda k: (mood_counts[k], mood_scores[k]), reverse=True)
+    
     return jsonify({
         "finalMood": sorted_moods[0],
         "secondaryMood": sorted_moods[1] if len(sorted_moods) > 1 else None,
@@ -175,9 +107,9 @@ def chat():
     if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        res = query_local_model([user_message])
+        # تحليل الشعور عبر الـ API
+        res = query_model_api([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
-        last_emotion_memory["last"] = emotion
 
         prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
         response = client.chat.completions.create(
@@ -190,6 +122,5 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    # ريندر يستخدم بورت 10000 عادة
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
