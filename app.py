@@ -1,147 +1,201 @@
+# app.py - Render API that loads the Hugging Face model directly
 import os
-import re # تم إضافة الاستيراد المفقود
-import requests
-import numpy as np
+import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from transformers import pipeline
 from openai import OpenAI
 
-# إعداد السيرفر
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(name, static_folder=".", static_url_path="")
 CORS(app)
 
-# إعداد OpenAI
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# OpenAI is only for /chat. If OPENAI_API_KEY is missing, /predict still works.
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-# ------------------------------------------------
-# 🤗 Hugging Face Inference API Integration
-# ------------------------------------------------
-API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
-# الرابط لازم يكون كامل بالـ https عشان الكود يطلع للإنترنت وما يدور داخل ريندر
+# IMPORTANT:
+# Copy this exactly from your Hugging Face model URL:
+# https://huggingface.co/raghadddddddd/anahEmotions
+MODEL_ID = "raghadddddddd/anahEmotions"
 
-# سحب التوكن والتأكد من وجوده
+# If model is private, add HF_TOKEN in Render Environment Variables.
 HF_TOKEN = os.environ.get("HF_TOKEN")
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}",
-    "Content-Type": "application/json"
+
+LABEL_MAP = {
+    "LABEL_0": "هادئ 🌿",
+    "LABEL_1": "سعيد ✨",
+    "LABEL_2": "حزين 😔",
+    "LABEL_3": "غاضب 💢",
+    "LABEL_4": "متوتر 😟",
+    "LABEL_5": "تعبان 😴",
 }
-def query_model_api(text_list):
-    """إرسال طلب لـ Hugging Face API باستخدام التوكن الموثق"""
-    results = []
-    try:
-        if not HF_TOKEN:
-            print("❌ Error: HF_TOKEN is missing in Environment Variables!")
-            return None
 
-        for text in text_list:
-            payload = {
-                "inputs": text,
-                "options": {"wait_for_model": True, "use_cache": False}
-            }
-            
-            response = requests.post(API_URL, headers=headers, json=payload)
-            
-            if response.status_code == 503:
-                print("⏳ Model is loading... Please wait.")
-                return "loading"
-            
-            if response.status_code != 200:
-                print(f"⚠️ API Error: {response.status_code} - {response.text}")
-                return None
-                
-            output = response.json()
-            
-            if isinstance(output, list) and len(output) > 0:
-                predictions = output[0] if isinstance(output[0], list) else output
-                top_prediction = max(predictions, key=lambda x: x['score'])
-                results.append({
-                    "label": top_prediction['label'],
-                    "score": float(top_prediction['score'])
-                })
-        return results if results else None
-    except Exception as e:
-        print(f"❌ Exception during API call: {e}")
-        return None
-
-# ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt
-# ------------------------------------------------
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
 استخدم لغة عربية فصحى بسيطة، كن متعاطفاً وغير مبالغ، ولا تقدم نصائح طبية.
 """
 
+classifier = None
+
+try:
+    print("⏳ Loading Hugging Face model inside Render:", MODEL_ID)
+
+    classifier = pipeline(
+        "text-classification",
+        model=MODEL_ID,
+        tokenizer=MODEL_ID,
+        token=HF_TOKEN,
+        truncation=True,
+    )
+
+    print("✅ Model loaded successfully:", MODEL_ID)
+
+    try:
+        print("id2label:", classifier.model.config.id2label)
+    except Exception:
+        pass
+
+except Exception as e:
+    print("❌ Model loading failed:", str(e))
+    classifier = None
+
+
 def split_arabic_sentences(text: str):
-    sentences = re.split(r'[.؟!،\n]+', text)
+    sentences = re.split(r"[.؟!،\n]+", text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
 
-# 🌐 Website Routes
+
+def normalize_label(raw_label: str):
+    return LABEL_MAP.get(raw_label, raw_label or "غير محدد")
+
+
 @app.route("/")
 def index():
+    return jsonify({
+        "status": "Anah API is running",
+        "model": MODEL_ID,
+        "model_loaded": classifier is not None,
+        "endpoints": ["/predict", "/chat"]
+    })
+
+
+@app.route("/home.html")
+def home_page():
     return send_from_directory(".", "home.html")
 
-# إضافة مسار لكل ملفات الـ HTML عشان تشتغل الروابط
-@app.route("/<path:filename>")
-def static_files(filename):
-    return send_from_directory(".", filename)
+
+@app.route("/journal.html")
+def journal_page():
+    return send_from_directory(".", "journal.html")
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    if classifier is None:
+        return jsonify({
+            "error": "Model not loaded",
+            "hint": "Check MODEL_ID, HF_TOKEN, Hugging Face model files, and Render memory."
+        }), 500
+
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    if not text: return jsonify({"error": "No text"}), 400
+
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
 
     sentences = split_arabic_sentences(text) or [text]
-    results = query_model_api(sentences)
-    
-    if results == "loading":
-        return jsonify({"error": "الموديل قيد التحميل، جرب ثانية بعد ثوانٍ"}), 503
-
-    if not results:
-        return jsonify({"error": "هناك مشكلة في الاتصال بالموديل"}), 500
 
     mood_counts = {}
     mood_scores = {}
     sentence_details = []
 
-    for i, res in enumerate(results):
-        mood = res["label"]
-        score = res["score"]
-        mood_counts[mood] = mood_counts.get(mood, 0) + 1
-        mood_scores[mood] = mood_scores.get(mood, 0.0) + score
-        sentence_details.append({"sentence": sentences[i], "mood": mood, "score": score})
+    try:
+        for sentence in sentences:
+            result = classifier(sentence, truncation=True, max_length=512)[0]
 
-    sorted_moods = sorted(mood_counts.keys(), key=lambda k: (mood_counts[k], mood_scores[k]), reverse=True)
-    
-    return jsonify({
-        "finalMood": sorted_moods[0],
-        "secondaryMood": sorted_moods[1] if len(sorted_moods) > 1 else None,
-        "moodCounts": mood_counts,
-        "sentencesDetails": sentence_details
-    })
+            raw_label = result.get("label", "غير محدد")
+            score = float(result.get("score", 0))
+            mood = normalize_label(raw_label)
+
+            mood_counts[mood] = mood_counts.get(mood, 0) + 1
+            mood_scores[mood] = mood_scores.get(mood, 0.0) + score
+
+            sentence_details.append({
+                "sentence": sentence,
+                "mood": mood,
+                "rawLabel": raw_label,
+                "score": score
+            })
+
+        sorted_moods = sorted(
+            mood_counts.keys(),
+            key=lambda k: (mood_counts[k], mood_scores[k]),
+            reverse=True
+        )
+
+        final_mood = sorted_moods[0] if sorted_moods else "غير محدد"
+        secondary_mood = sorted_moods[1] if len(sorted_moods) > 1 else None
+
+        return jsonify({
+            "finalMood": final_mood,
+            "mood": final_mood,
+            "secondaryMood": secondary_mood,
+            "moodCounts": mood_counts,
+            "sentencesDetails": sentence_details,
+            "confidence": round(mood_scores.get(final_mood, 0.0) / max(mood_counts.get(final_mood, 1), 1), 4)
+        })
+except Exception as e:
+        print("❌ Prediction error:", str(e))
+        return jsonify({
+            "error": "Prediction failed",
+            "details": str(e)
+        }), 500
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
     user_message = (data.get("message") or data.get("text") or "").strip()
-    if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
+
+    if len(user_message) < 3:
+        return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        res = query_model_api([user_message])
         emotion = "غير محدد"
-        if isinstance(res, list) and len(res) > 0:
-            emotion = res[0]["label"]
+
+        if classifier is not None:
+            result = classifier(user_message, truncation=True, max_length=512)[0]
+            emotion = normalize_label(result.get("label", "غير محدد"))
+
+        if client is None:
+            return jsonify({
+                "emotion": emotion,
+                "reply": "أنا هنا لأسمعك، خذ نفساً عميقاً واكتب لي ما تشعر به."
+            })
 
         prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ]
         )
-        return jsonify({"reply": response.choices[0].message.content.strip()})
-    except:
-        return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
-if __name__ == "__main__":
+        return jsonify({
+            "emotion": emotion,
+            "reply": response.choices[0].message.content.strip()
+        })
+
+    except Exception as e:
+        print("❌ Chat error:", str(e))
+        return jsonify({
+            "reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."
+        })
+
+
+if name == "main":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
