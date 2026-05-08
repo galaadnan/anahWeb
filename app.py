@@ -1,113 +1,80 @@
-import re
 import os
-import numpy as np
+import re
 import gdown
+import numpy as np
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 import onnxruntime as ort
 from transformers import AutoTokenizer
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# ⚙️ ONNX Engine & Google Drive Integration
+# ⚙️ Full Precision ONNX Engine (621MB)
 # ------------------------------------------------
-# 1. المعرف الخاص بالموديل (نسخة FP16 المصلحة)
-FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
+# ❗ تأكدي إن هذا هو المعرف الصحيح لملف model.onnx اللي بالصورة
+FILE_ID = "1pbw1krVbn46yPQ8vphbeCqf_mSnsSred" 
+MODEL_DIR = "."
+MODEL_PATH = os.path.join(MODEL_DIR, "model.onnx")
 
-# 2. تحديد المسار المطلق للموديل
-current_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(current_dir, "model.onnx")
-
-# متغيرات عالمية
 onnx_session = None
 tokenizer = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
-# 3. دالة التحميل
-def download_model_from_drive():
+def setup_ai():
+    global onnx_session, tokenizer
     if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading Fixed FP16 Anah Model...")
+        print("⏳ جاري تحميل الموديل (621MB) من درايف... قد يستغرق عدة دقائق")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
             gdown.download(url, MODEL_PATH, quiet=False)
-            print("✅ Download Complete!")
+            print("✅ تم التحميل بنجاح!")
         except Exception as e:
-            print(f"❌ Download Failed: {e}")
+            print(f"❌ فشل التحميل: {e}")
             raise e
 
-def load_ai_engine():
-    global onnx_session, tokenizer
-    download_model_from_drive()
-    print("⏳ Loading Anah ONNX Engine (CPU Optimized)...")
+    print("🧠 جاري تشغيل المحرك بكامل الدقة...")
     try:
-        # تحميل التوكنايزر
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         
-        tokenizer = AutoTokenizer.from_pretrained(current_dir)
-        
-        # إعدادات الجلسة لتحسين الذاكرة ومنع أخطاء التوافق
         sess_options = ort.SessionOptions()
-        sess_options.enable_mem_pattern = False
-        sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        
-        # إجبار العمل على CPU فقط لتفادي أخطاء الـ GPU في ريندر
-        onnx_session = ort.InferenceSession(
-            MODEL_PATH, 
-            sess_options, 
-            providers=['CPUExecutionProvider']
-        )
-        onnx_session.disable_fallback()
-        print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
+        # تشغيل الموديل باستخدام الـ CPU
+        onnx_session = ort.InferenceSession(MODEL_PATH, sess_options, providers=['CPUExecutionProvider'])
+        print("🚀 نظام أناه جاهز ومستعد 100%!")
     except Exception as e:
-        print(f"❌ Error loading model: {e}")
+        print(f"❌ خطأ في التشغيل: {e}")
         raise e
 
-# تحميل المحرك مرة وحدة عند تشغيل السيرفر
-load_ai_engine()
+setup_ai()
 
-# 🧪 دالة الاستعلام وتحليل النصوص
-def query_local_model(text_list):
-    if onnx_session is None or tokenizer is None:
-        print("⚠️ Model is not loaded yet.")
-        return None
-        
+def query_model(text_list):
     results = []
     try:
         input_names = [inp.name for inp in onnx_session.get_inputs()]
-        
         for text in text_list:
-            # تحويل النص لمدخلات بايثون
-            inputs = tokenizer(text, return_tensors="np",padding=True, max_length=64, truncation=True)
-            
-            # 🔥 الحل الجذري للـ TypeError:
-            # إجبار كل المدخلات (input_ids, attention_mask, token_type_ids) تكون int64
+            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True, max_length=128)
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
-            # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
-            
-            # سحب النتائج (Scores)
             scores = ort_outs[0][0]
             
-            # Softmax يدوي لضمان الدقة مع الـ FP16
+            # حساب الاحتمالات يدوياً
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
-            best_idx = np.argmax(probs)
+            best_idx = int(np.argmax(probs))
             
             results.append({
-                "label": LABELS[best_idx], 
+                "label": LABELS[best_idx],
                 "score": float(probs[best_idx])
             })
         return results
     except Exception as e:
-        print(f"❌ Prediction Error: {e}")
+        print(f"❌ Analysis Error: {e}")
         return None
-
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
