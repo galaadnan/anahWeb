@@ -24,12 +24,12 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# 1. المعرف الخاص بالموديل الجديد (نسخة FP16 الذكية)
-FILE_ID = "1VhHIuAL6-gA25rbqhc6G7vpBcFMcUdwC"
+# 1. المعرف الخاص بالموديل الجديد (النسخة التي تم إصلاحها keep_io_types)
+FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
 
 # 2. تحديد المسار المطلق للموديل الجديد
 current_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(current_dir, "model_fp16.onnx")
+MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
 
 # متغيرات عالمية للمحرك والتوكنايزر
 onnx_session = None
@@ -38,9 +38,9 @@ LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعب�
 
 # 3. دالة التحميل من جوجل درايف
 def download_model_from_drive():
-    """تحميل الموديل الجديد من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
+    """تحميل الموديل المصلح من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading FP16 Anah Model from Google Drive...")
+        print("⏳ Downloading Fixed FP16 Anah Model from Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
             gdown.download(url, MODEL_PATH, quiet=False)
@@ -53,7 +53,7 @@ def load_ai_engine():
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine...")
     try:
-        # تحميل قاموس MARBERT الأصلي لضمان فهم الكلمات بدقة (مثل غاضب وتعبان)
+        # تحميل قاموس MARBERT الأصلي لضمان فهم الكلمات بدقة
         tokenizer = AutoTokenizer.from_pretrained("UBC-NLP/MARBERT")
         
         sess_options = ort.SessionOptions()
@@ -62,7 +62,7 @@ def load_ai_engine():
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
-        print("✅ Local FP16 Model & MARBERT Tokenizer Loaded Successfully!")
+        print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model: {e}")
 
@@ -72,7 +72,6 @@ is_loading_started = False
 @app.before_request
 def trigger_loading_in_worker():
     global is_loading_started
-    # بمجرد دخول أول مستخدم للموقع، يبدأ التحميل داخل الذاكرة الصحيحة للـ Worker
     if not is_loading_started:
         is_loading_started = True
         threading.Thread(target=load_ai_engine).start()
@@ -88,17 +87,17 @@ def query_local_model(text_list):
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # تحويل النص إلى أرقام باستخدام قاموس MARBERT
+            # تحويل النص باستخدام قاموس MARBERT
             inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
             
-            # التأكد من نوع البيانات int64 المتوافق مع ONNX
+            # التوافق مع نوع int64
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
-            # تشغيل عملية التوقع
+            # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
             
-            # حساب الاحتمالات (Softmax) لاختيار الشعور الأقوى
+            # حساب الاحتمالات
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
