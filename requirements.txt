@@ -6,3 +6,4 @@ onnxruntime==1.16.0
 transformers
 openai
 setuptools
+gunicorn
