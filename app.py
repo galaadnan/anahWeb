@@ -1,3 +1,26 @@
+# Updated: May 8, 2026 - Final Stable Version for Anah
+import os
+import re
+import numpy as np
+import gdown
+import threading
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from openai import OpenAI
+import onnxruntime as ort
+from transformers import AutoTokenizer
+
+# --- إعداد السيرفر الأساسي (يجب أن يكون هنا لتعريف app) ---
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)
+
+# تقييد استهلاك الذاكرة لبيئة ريندر (512MB)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+# إعداد OpenAI
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
@@ -29,7 +52,7 @@ def load_ai_engine():
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine (CPU Optimized)...")
     try:
-        # تحميل التوكنايزر
+        # تحميل التوكنايزر من MARBERT
         tokenizer = AutoTokenizer.from_pretrained("UBC-NLP/MARBERT")
         
         # إعدادات الجلسة لتحسين الذاكرة ومنع أخطاء التوافق
@@ -68,20 +91,19 @@ def query_local_model(text_list):
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # تحويل النص لمدخلات بايثون
+            # تحويل النص لمدخلات (Tokenization)
             inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
             
-            # 🔥 الحل الجذري للـ TypeError:
             # إجبار كل المدخلات (input_ids, attention_mask, token_type_ids) تكون int64
+            # هذا هو الحل الجذري للـ TypeError
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
             # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
-            
-            # سحب النتائج (Scores)
             scores = ort_outs[0][0]
             
-            # Softmax يدوي لضمان الدقة مع الـ FP16
+            # حساب الاحتمالات باستخدام Softmax:
+            # $$\sigma(z)_i = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}}$$
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
