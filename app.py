@@ -24,12 +24,12 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# 1. المعرف الخاص بالموديل المضغوط
-FILE_ID = "1FOn-1ZxUNUfTkpUDjrjx01GHt807L-Ju"
+# 1. المعرف الخاص بالموديل الجديد (نسخة FP16 الذكية)
+FILE_ID = "1VhHIuAL6-gA25rbqhc6G7vpBcFMcUdwC"
 
-# 2. تحديد المسار المطلق للموديل
+# 2. تحديد المسار المطلق للموديل الجديد
 current_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(current_dir, "model_quantized.onnx")
+MODEL_PATH = os.path.join(current_dir, "model_fp16.onnx")
 
 # متغيرات عالمية للمحرك والتوكنايزر
 onnx_session = None
@@ -38,9 +38,9 @@ LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعب�
 
 # 3. دالة التحميل من جوجل درايف
 def download_model_from_drive():
-    """تحميل الموديل المضغوط من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
+    """تحميل الموديل الجديد من جوجل درايف إذا لم يكن موجوداً على السيرفر"""
     if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading Quantized Anah Model from Google Drive...")
+        print("⏳ Downloading FP16 Anah Model from Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
             gdown.download(url, MODEL_PATH, quiet=False)
@@ -53,29 +53,31 @@ def load_ai_engine():
     download_model_from_drive()
     print("⏳ Loading Anah ONNX Engine...")
     try:
-        # إزالة local_files_only=True لضمان تحميل التوكنايزر بشكل صحيح
-        tokenizer = AutoTokenizer.from_pretrained(current_dir)
+        # تحميل قاموس MARBERT الأصلي لضمان فهم الكلمات بدقة (مثل غاضب وتعبان)
+        tokenizer = AutoTokenizer.from_pretrained("UBC-NLP/MARBERT")
+        
         sess_options = ort.SessionOptions()
         sess_options.enable_mem_pattern = False
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         
         onnx_session = ort.InferenceSession(MODEL_PATH, sess_options)
-        print("✅ Local ONNX Model & Transformers Tokenizer Loaded Successfully!")
+        print("✅ Local FP16 Model & MARBERT Tokenizer Loaded Successfully!")
     except Exception as e:
         print(f"❌ Error loading model: {e}")
-# متغير لضمان تشغيل التحميل مرة واحدة فقط
+
+# متغير لضمان تشغيل التحميل مرة واحدة فقط عند أول زيارة للموقع
 is_loading_started = False
 
 @app.before_request
 def trigger_loading_in_worker():
     global is_loading_started
-    # بمجرد دخول أول مستخدم للموقع، يبدأ التحميل داخل الذاكرة الصحيحة
+    # بمجرد دخول أول مستخدم للموقع، يبدأ التحميل داخل الذاكرة الصحيحة للـ Worker
     if not is_loading_started:
         is_loading_started = True
         threading.Thread(target=load_ai_engine).start()
 
-# بدء عملية التحميل والتحميل في خيط (Thread) منفصل
+# دالة الاستعلام وتحليل النصوص
 def query_local_model(text_list):
     if onnx_session is None or tokenizer is None:
         print("⚠️ Model is not loaded.")
@@ -86,15 +88,17 @@ def query_local_model(text_list):
         input_names = [inp.name for inp in onnx_session.get_inputs()]
         
         for text in text_list:
-            # إضافة Padding و Max Length تماماً كما في الكود الأول لضمان التوافق
+            # تحويل النص إلى أرقام باستخدام قاموس MARBERT
             inputs = tokenizer(text, return_tensors="np", padding='max_length', max_length=128, truncation=True)
             
-            # إعادة إضافة تحويل int64 المهم جداً لمحرك ONNX
+            # التأكد من نوع البيانات int64 المتوافق مع ONNX
             ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
             
+            # تشغيل عملية التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
             scores = ort_outs[0][0]
             
+            # حساب الاحتمالات (Softmax) لاختيار الشعور الأقوى
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
