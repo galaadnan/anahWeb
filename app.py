@@ -1,30 +1,22 @@
-import re
-import os
-import numpy as np
-import gdown
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from openai import OpenAI
-import onnxruntime as ort
-from transformers import AutoTokenizer
-
-# إعداد السيرفر
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
-
-# إعداد OpenAI
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
 # ------------------------------------------------
 # ⚙️ ONNX Engine & Google Drive Integration
 # ------------------------------------------------
-# استبدلي هذا المعرف بالمعرف الجديد الخاص بملف (621MB) من جوجل درايف
-FILE_ID = "1FBS7ZkBoSABvmeKDpNL92o1VWsSTaYpY"
-MODEL_PATH = "model.onnx"
+# 1. المعرف الخاص بالموديل (نسخة FP16 المصلحة)
+FILE_ID = "1iJc2TEwLiGhapd_e-E-6Pr9wGSqVnpn2"
 
-def download_model():
+# 2. تحديد المسار المطلق للموديل
+current_dir = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(current_dir, "model_fp16_fixed.onnx")
+
+# متغيرات عالمية
+onnx_session = None
+tokenizer = None
+LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
+
+# 3. دالة التحميل
+def download_model_from_drive():
     if not os.path.exists(MODEL_PATH):
-        print("⏳ Downloading Anah Full Model (621MB) from Google Drive...")
+        print("⏳ Downloading Fixed FP16 Anah Model...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
             gdown.download(url, MODEL_PATH, quiet=False)
@@ -32,63 +24,84 @@ def download_model():
         except Exception as e:
             print(f"❌ Download Failed: {e}")
 
-download_model()
+def load_ai_engine():
+    global onnx_session, tokenizer
+    download_model_from_drive()
+    print("⏳ Loading Anah ONNX Engine (CPU Optimized)...")
+    try:
+        # تحميل التوكنايزر
+        if not os.path.exists("./marbert_tokenizer"):
+            raise Exception("❌ marbert_tokenizer folder not found")
+        tokenizer = AutoTokenizer.from_pretrained("./marbert_tokenizer")
+        
+        # إعدادات الجلسة لتحسين الذاكرة ومنع أخطاء التوافق
+        sess_options = ort.SessionOptions()
+        sess_options.enable_mem_pattern = False
+        sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        
+        # إجبار العمل على CPU فقط لتفادي أخطاء الـ GPU في ريندر
+        onnx_session = ort.InferenceSession(
+            MODEL_PATH, 
+            sess_options, 
+            providers=['CPUExecutionProvider']
+        )
+        onnx_session.disable_fallback()
+        print("✅ Fixed FP16 Model & MARBERT Tokenizer Loaded Successfully!")
+    except Exception as e:
+        print(f"❌ Error loading model: {e}")
 
-# تحميل التوكنايزر والموديل
-print("⏳ Loading Anah ONNX Engine...")
-try:
-    # سيقرأ التوكنايزر من الملفات المحلية (vocab.txt, الخ)
-    tokenizer = AutoTokenizer.from_pretrained(".")
-    onnx_session = ort.InferenceSession(MODEL_PATH)
-    # القائمة المعتمدة في موديلك الجديد
-    LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
-    print("✅ Local ONNX Model Loaded Successfully!")
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
+# تحميل المحرك مرة وحدة عند تشغيل السيرفر
+load_ai_engine()
 
+# 🧪 دالة الاستعلام وتحليل النصوص
 def query_local_model(text_list):
+    if onnx_session is None or tokenizer is None:
+        print("⚠️ Model is not loaded yet.")
+        return None
+        
     results = []
     try:
+        input_names = [inp.name for inp in onnx_session.get_inputs()]
+        
         for text in text_list:
-            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True)
-            ort_inputs = {k: v for k, v in inputs.items()}
+            # تحويل النص لمدخلات بايثون
+            inputs = tokenizer(text, return_tensors="np",padding=True, max_length=64, truncation=True)
+            
+            # 🔥 الحل الجذري للـ TypeError:
+            # إجبار كل المدخلات (input_ids, attention_mask, token_type_ids) تكون int64
+            ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
+            
+            # تشغيل التوقع
             ort_outs = onnx_session.run(None, ort_inputs)
+            
+            # سحب النتائج (Scores)
             scores = ort_outs[0][0]
-            # تحويل النتائج لنسب (Softmax)
+            
+            # Softmax يدوي لضمان الدقة مع الـ FP16
             exp_scores = np.exp(scores - np.max(scores))
             probs = exp_scores / exp_scores.sum()
             best_idx = np.argmax(probs)
-            results.append({"label": LABELS[best_idx], "score": float(probs[best_idx])})
+            
+            results.append({
+                "label": LABELS[best_idx], 
+                "score": float(probs[best_idx])
+            })
         return results
     except Exception as e:
         print(f"❌ Prediction Error: {e}")
         return None
 
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt (نسختك كما هي)
+# 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
 last_emotion_memory = {}
 
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
-
-التعليمات:
-- استخدم لغة عربية فصحى بسيطة وطبيعية.
-- لا تجعل جميع الردود بنفس الطول.
-- إذا كانت رسالة المستخدم قصيرة، اجعل الرد مختصراً.
-- إذا عبّر المستخدم بتفاصيل أو مشاعر أعمق، يمكن أن يكون الرد أطول قليلاً.
-- ابدأ بتفهم واضح ولمسة تعاطف هادئة.
-- اقترح خطوة عملية بسيطة عندما يكون ذلك مناسباً.
-- لا تنهِ كل رد بسؤال.
-- استخدم السؤال فقط إذا كان سيساعد بشكل طبيعي على فهم المستخدم أو دعمه.
-- أحياناً يكفي رد داعم دون أي سؤال.
-- تجنب التكرار والردود النمطية.
-- لا تبالغ في التعاطف أو الدرامية.
-- لا تقدم تشخيصات أو نصائح طبية.
-- اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
+استخدم لغة عربية فصحى بسيطة، كن متعاطفاً وغير مبالغ، ولا تقدم نصائح طبية.
 """
 
-# 🧩 Helper Functions
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
@@ -100,6 +113,9 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    if onnx_session is None:
+        return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
+
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
@@ -136,24 +152,21 @@ def chat():
     try:
         res = query_local_model([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
-        
-        prev_emo = last_emotion_memory.get("last")
         last_emotion_memory["last"] = emotion
 
         prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
-        if prev_emo and prev_emo != emotion:
-            prompt = f"المستخدم انتقل من {prev_emo} إلى {emotion}. رسالته: {user_message}"
-
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
+            timeout=20,
             messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
         )
         return jsonify({"reply": response.choices[0].message.content.strip()})
-    except:
+    except Exception as e:
+        print(f"❌ Chat Error: {e}")
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    # ريندر يستخدم بورت 10000 عادة
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
- 
