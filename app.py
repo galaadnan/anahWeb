@@ -17,9 +17,14 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
-HF_TOKEN = os.environ.get("HF_TOKEN")
-headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+# الرابط لازم يكون كامل بالـ https عشان الكود يطلع للإنترنت وما يدور داخل ريندر
 
+# سحب التوكن والتأكد من وجوده
+HF_TOKEN = os.environ.get("HF_TOKEN")
+headers = {
+    "Authorization": f"Bearer {HF_TOKEN}",
+    "Content-Type": "application/json"
+}
 def query_model_api(text_list):
     """إرسال طلب لـ Hugging Face API باستخدام التوكن الموثق"""
     results = []
