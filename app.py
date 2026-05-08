@@ -1,12 +1,11 @@
 import os
 import re
 import gdown
-import numpy as np
+import torch
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
-import onnxruntime as ort
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -14,39 +13,39 @@ CORS(app)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# ⚙️ Full Precision ONNX Engine (621MB)
+# ⚙️ Safetensors Engine & Google Drive Integration
 # ------------------------------------------------
-# ❗ تأكدي إن هذا هو المعرف الصحيح لملف model.onnx اللي بالصورة
-FILE_ID = "1pbw1krVbn46yPQ8vphbeCqf_mSnsSred" 
+# المعرف الخاص بملف model.safetensors
+FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu"
 MODEL_DIR = "."
-MODEL_PATH = os.path.join(MODEL_DIR, "model.onnx")
+# نسميه model.safetensors عشان مكتبة transformers تتعرف عليه مباشرة
+WEIGHTS_PATH = os.path.join(MODEL_DIR, "model.safetensors")
 
-onnx_session = None
 tokenizer = None
+model = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
 def setup_ai():
-    global onnx_session, tokenizer
-    if not os.path.exists(MODEL_PATH):
-        print("⏳ جاري تحميل الموديل (621MB) من درايف... قد يستغرق عدة دقائق")
+    global tokenizer, model
+    if not os.path.exists(WEIGHTS_PATH):
+        print("⏳ جاري تحميل ملف model.safetensors من Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
-            gdown.download(url, MODEL_PATH, quiet=False)
-            print("✅ تم التحميل بنجاح!")
+            gdown.download(url, WEIGHTS_PATH, quiet=False)
+            print("✅ تم تحميل الأوزان بنجاح!")
         except Exception as e:
             print(f"❌ فشل التحميل: {e}")
             raise e
 
-    print("🧠 جاري تشغيل المحرك بكامل الدقة...")
+    print("🧠 جاري تحميل الموديل الكامل في الذاكرة (2GB RAM)...")
     try:
+        # قراءة الموديل الأصلي بدون أي ضغط أو ONNX
         tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        
-        sess_options = ort.SessionOptions()
-        # تشغيل الموديل باستخدام الـ CPU
-        onnx_session = ort.InferenceSession(MODEL_PATH, sess_options, providers=['CPUExecutionProvider'])
-        print("🚀 نظام أناه جاهز ومستعد 100%!")
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+        model.eval()
+        print("🚀 نظام أناه جاهز الآن بدقة 100%!")
     except Exception as e:
-        print(f"❌ خطأ في التشغيل: {e}")
+        print(f"❌ خطأ في تحميل المحرك: {e}")
         raise e
 
 setup_ai()
@@ -54,22 +53,17 @@ setup_ai()
 def query_model(text_list):
     results = []
     try:
-        input_names = [inp.name for inp in onnx_session.get_inputs()]
         for text in text_list:
-            inputs = tokenizer(text, return_tensors="np", padding=True, truncation=True, max_length=128)
-            ort_inputs = {k: v.astype(np.int64) for k, v in inputs.items() if k in input_names}
+            inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
+            with torch.no_grad():
+                outputs = model(**inputs)
             
-            ort_outs = onnx_session.run(None, ort_inputs)
-            scores = ort_outs[0][0]
-            
-            # حساب الاحتمالات يدوياً
-            exp_scores = np.exp(scores - np.max(scores))
-            probs = exp_scores / exp_scores.sum()
-            best_idx = int(np.argmax(probs))
+            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+            best_idx = torch.argmax(probs).item()
             
             results.append({
                 "label": LABELS[best_idx],
-                "score": float(probs[best_idx])
+                "score": float(probs[0][best_idx])
             })
         return results
     except Exception as e:
