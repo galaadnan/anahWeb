@@ -69,6 +69,7 @@ def query_model(text_list):
     except Exception as e:
         print(f"❌ Analysis Error: {e}")
         return None
+
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
@@ -90,7 +91,8 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if onnx_session is None:
+    # تم التعديل هنا لفحص model بدلاً من onnx_session
+    if model is None:
         return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
 
     data = request.get_json(silent=True) or {}
@@ -98,7 +100,8 @@ def predict():
     if not text: return jsonify({"error": "No text"}), 400
 
     sentences = split_arabic_sentences(text) or [text]
-    results = query_local_model(sentences)
+    # تم تصحيح اسم الدالة هنا إلى query_model
+    results = query_model(sentences)
     if not results: return jsonify({"error": "AI Engine Error"}), 500
 
     mood_counts = {}
@@ -127,7 +130,8 @@ def chat():
     if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        res = query_local_model([user_message])
+        # تم تصحيح اسم الدالة هنا إلى query_model
+        res = query_model([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
         last_emotion_memory["last"] = emotion
 
