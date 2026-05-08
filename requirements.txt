@@ -5,6 +5,5 @@ torch --index-url https://download.pytorch.org/whl/cpu
 transformers
 openai
 gunicorn
-onnxruntime
+onnxruntime==1.16.0
 numpy
- 
