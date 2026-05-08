@@ -54,8 +54,7 @@ def load_ai_engine():
     print("⏳ Loading Anah ONNX Engine...")
     try:
         # إزالة local_files_only=True لضمان تحميل التوكنايزر بشكل صحيح
-        tokenizer = AutoTokenizer.from_pretrained(current_dir)
-        
+        tokenizer = AutoTokenizer.from_pretrained(current_dir, local_files_only=True)         
         sess_options = ort.SessionOptions()
         sess_options.enable_mem_pattern = False
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
