@@ -17,7 +17,7 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # 🤗 Hugging Face Inference API Integration
 # ------------------------------------------------
-# 1. الرابط البرمجي (تأكدي من عدد الـ d هو 8 حبات)
+# الرابط لازم يكون كذا بالتمام والكمال
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
 
 # 2. سحب التوكن من إعدادات ريندر
