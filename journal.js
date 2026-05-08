@@ -125,8 +125,11 @@ async function saveTodayEntry() {
   try {
     const emojiDoc = await userRef.collection("emoji_moods").doc(today).get();
     if (emojiDoc.exists) {
-      if (!(await showJournalChoiceModal())) return; 
-      await userRef.collection("emoji_moods").doc(today).delete(); 
+      if (!(await showJournalChoiceModal())) return;
+
+      await userRef.collection("emoji_moods").doc(today).delete();
+
+      localStorage.removeItem("anah_current_mood");
     }
 
     saveBtn.disabled = true;
