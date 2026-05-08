@@ -1,8 +1,7 @@
 flask
 flask-cors
-onnxruntime
+onnxruntime==1.16.0  # حددي الإصدار لضمان الاستقرار
 transformers
 numpy
-openai
 gdown
-gunicorn
+openai
