@@ -1,4 +1,4 @@
-# Updated: May 8, 2026 - Final Stable Version using Hugging Face API
+# Updated: May 8, 2026 - Final Stable Version without Hugging Face Token
 import os
 import re
 import requests
@@ -11,7 +11,7 @@ from openai import OpenAI
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
-# إعداد OpenAI
+# إعداد OpenAI (تأكدي أن المفتاح موجود في إعدادات رندر باسم OPENAI_API_KEY)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
@@ -19,25 +19,28 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 # ------------------------------------------------
 # رابط الموديل الخاص بك على Hugging Face
 API_URL = "https://api-inference.huggingface.co/models/raghadddddddd/anahEmotions"
-# تأكدي من إضافة مفتاح HF_TOKEN في إعدادات رندر (Environment Variables)
-HF_TOKEN = os.environ.get("HF_TOKEN")
-headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query_model_api(text_list):
-    """إرسال طلب لـ Hugging Face API بدلاً من المحرك المحلي"""
+    """إرسال طلب لـ Hugging Face API مباشرة بدون استخدام توكن"""
     results = []
     try:
         for text in text_list:
+            # إرسال طلب POST مباشر للموديل العام
             response = requests.post(
                 API_URL, 
-                headers=headers, 
                 json={"inputs": text, "options": {"wait_for_model": True}}
             )
+            
+            # التأكد من نجاح الطلب (كود 200)
+            if response.status_code != 200:
+                print(f"⚠️ API Error: {response.status_code} - {response.text}")
+                return None
+                
             output = response.json()
             
-            # معالجة استجابة Hugging Face (غالباً تكون قائمة داخل قائمة)
+            # معالجة استجابة Hugging Face
             if isinstance(output, list) and len(output) > 0:
-                # ترتيب النتائج للحصول على الأعلى سكور
+                # الحصول على قائمة التوقعات وترتيبها للأعلى سكور
                 predictions = output[0] if isinstance(output[0], list) else output
                 top_prediction = max(predictions, key=lambda x: x['score'])
                 
@@ -69,7 +72,7 @@ def index():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    # لا حاجة لانتظار التحميل هنا لأننا نستخدم API
+    # التحليل المباشر عبر الـ API
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
@@ -107,7 +110,7 @@ def chat():
     if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        # تحليل الشعور عبر الـ API
+        # تحليل الشعور عبر الـ API لتحديد نبرة الرد
         res = query_model_api([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
 
@@ -122,5 +125,6 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
+    # ريندر يستخدم بورت 10000 عادة
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
