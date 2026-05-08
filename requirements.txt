@@ -3,7 +3,6 @@ flask-cors
 gdown
 torch --index-url https://download.pytorch.org/whl/cpu
 transformers
+safetensors
 openai
 gunicorn
-onnxruntime
-numpy
