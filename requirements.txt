@@ -5,3 +5,4 @@ numpy==1.25.2
 onnxruntime==1.16.0
 transformers
 openai
+setuptools
