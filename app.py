@@ -247,25 +247,95 @@ def predict():
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
+
     user_message = (data.get("message") or data.get("text") or "").strip()
-    if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
+    current_mood = (data.get("currentMood") or "غير محدد").strip()
+
+    if len(user_message) < 2:
+        return jsonify({"reply": "أنا هنا معك 🤍"})
 
     try:
-        res = query_model([user_message])
-        emotion = res[0]["label"] if res else "غير محدد"
-        last_emotion_memory["last"] = emotion
 
-        prompt = f"المستخدم يشعر بـ {emotion}. رسالته: {user_message}"
+        # --------------------------------------------
+        # ✨ الرسائل العادية
+        # --------------------------------------------
+
+        casual_messages = [
+            "هاي", "هلا", "السلام", "السلام عليكم",
+            "اهلا", "مرحبا", "كيفك", "شلونك",
+            "هههه", "lol", "اوكي", "تمام"
+        ]
+
+        detected_emotion = current_mood
+
+        # --------------------------------------------
+        # ✨ تحليل المشاعر فقط عند الحاجة
+        # --------------------------------------------
+
+        should_analyze = len(user_message.split()) >= 4
+
+        if should_analyze:
+            res = query_model([user_message])
+
+            if res and len(res) > 0:
+                detected_emotion = res[0]["label"]
+
+        # إذا كانت رسالة عادية لا تغيّر الشعور
+        if user_message.strip().lower() in casual_messages:
+            detected_emotion = current_mood
+
+        # حفظ آخر شعور
+        last_emotion_memory["last"] = detected_emotion
+
+        # --------------------------------------------
+        # 🧠 البرومبت الذكي
+        # --------------------------------------------
+
+        prompt = f"""
+المستخدم حالته الحالية: {current_mood}
+
+الشعور المستنتج من الرسالة: {detected_emotion}
+
+رسالة المستخدم:
+{user_message}
+
+تعليمات الرد:
+- كن طبيعيًا جدًا.
+- لا تخترع مشاعر غير موجودة.
+- إذا كانت الرسالة بسيطة اجعل الرد قصيرًا.
+- إذا كانت الرسالة عاطفية كن داعمًا ومتفهماً.
+- لا تعطِ تشخيصات طبية.
+"""
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
             timeout=20,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt}]
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
         )
-        return jsonify({"reply": response.choices[0].message.content.strip()})
+
+        reply = response.choices[0].message.content.strip()
+
+        return jsonify({
+            "reply": reply,
+            "emotion_used": detected_emotion
+        })
+
     except Exception as e:
         print(f"❌ Chat Error: {e}")
-        return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
+
+        return jsonify({
+            "reply": "أنا هنا لأسمعك 🤍"
+        })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
