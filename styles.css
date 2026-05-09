@@ -485,15 +485,7 @@ main { padding-block: 26px 40px; }
 /* =========================================
    عشان ما تخرب في اللابتوب وتصير عمود واحد
    ========================================= */
-@media (max-width: 900px) {
-  .home-grid {
-    /* ما نخليهم عمود واحد إلا إذا الشاشة فعلاً صغيرة (زي الجوال) */
-    grid-template-columns: 1fr !important;
-  }
-  .home-right, .home-left {
-    grid-column: 1 !important;
-  }
-}
+
 /* Generic Card */
 .home-card { border-radius: 22px; padding: 16px 16px 18px; background: rgba(255, 255, 255, 0.96); border: 1px solid rgba(204, 171, 216, 0.5); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08); }
 
@@ -1280,7 +1272,7 @@ main { padding-block: 26px 40px; }
     grid-column: auto !important;
   }
   .nav { padding-block: 8px; gap: 10px; }
-  .nav-links { overflow-x: auto; white-space: nowrap; padding-bottom: 4px; }
+  .nav-links { padding-bottom: 4px; }
   .journal-container { width: 92%; padding: 16px; margin-top: 8px; }
   .journal-header-top { flex-direction: column; align-items: flex-start; }
 }
@@ -1738,5 +1730,117 @@ main { padding-block: 26px 40px; }
     font-size: 0.95rem;
   }
 }
+/* =========================================================
+   MOBILE HEADER FIX
+   ========================================================= */
 
+@media (max-width: 768px) {
+
+  /* الهيدر كامل */
+  .nav {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+  }
+
+  /* اللوقو */
+  .brand {
+    font-size: 1.7rem;
+    justify-content: center;
+  }
+
+  /* روابط التنقل */
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .nav-links a {
+    font-size: 0.95rem;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.75);
+    border-radius: 999px;
+    border: 1px solid rgba(204,171,216,0.25);
+    backdrop-filter: blur(10px);
+  }
+
+  /* مرحبا GG */
+  .welcome-user,
+  .welcome-pill,
+  .user-greeting {
+    width: fit-content;
+    max-width: 90%;
+    margin: 10px auto 0;
+    padding: 12px 22px;
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(204,171,216,0.35);
+
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-align: center;
+
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  }
+}
+
+/* =========================================================
+   ANALYZE FILTER FIX MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  /* قسم الفلترة */
+  .analyze-header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  /* مجموعة الأزرار */
+  .an-chip-group {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  /* الأزرار نفسها */
+  .an-chip {
+    flex: 1 1 110px;
+    min-width: 110px;
+    text-align: center;
+
+    padding: 12px 14px !important;
+    font-size: 0.92rem !important;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* الزر المفعل */
+  .an-chip.is-active {
+    transform: scale(1.03) !important;
+  }
+
+  /* الكرت العلوي */
+  .an-card {
+    padding: 20px 16px;
+  }
+
+  .analyze-title {
+    font-size: 2rem;
+    line-height: 1.3;
+  }
+
+  .an-subtext {
+    font-size: 0.95rem;
+  }
 }
