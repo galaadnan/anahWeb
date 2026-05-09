@@ -4,6 +4,7 @@ import gdown
 import torch
 import zipfile
 import base64
+import shutil
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
@@ -45,8 +46,9 @@ def decrypt_journal(encrypted_text_b64: str) -> str:
 # ⚙️ Safetensors Engine (ZIP) & Google Drive Integration
 # ------------------------------------------------
 FILE_ID = "1FXO4qF1YdQd2oqgBPkP3x-wYWJp5O9pC" # الـ ID الجديد لملف ZIP
-MODEL_DIR = "."
-ZIP_PATH = os.path.join(MODEL_DIR, "model.zip")
+# استخدام المسار المطلق لضمان عمله بشكل صحيح على خوادم ريندر
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ZIP_PATH = os.path.join(BASE_DIR, "model.zip")
 
 tokenizer = None
 model = None
@@ -55,8 +57,10 @@ LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعب�
 def setup_ai():
     global tokenizer, model
     
+    config_path = os.path.join(BASE_DIR, "config.json")
+    
     # 1. التحقق من وجود الملفات، إذا لم تكن موجودة نحمل ملف الـ ZIP
-    if not os.path.exists(os.path.join(MODEL_DIR, "config.json")):
+    if not os.path.exists(config_path):
         print("⏳ جاري تحميل الحزمة الكاملة (ZIP) من Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
@@ -65,7 +69,15 @@ def setup_ai():
             # 2. فك الضغط
             print("📦 جاري فك ضغط الملفات...")
             with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-                zip_ref.extractall(MODEL_DIR)
+                zip_ref.extractall(BASE_DIR)
+            
+            # ✨ حركة ذكية: نقل الملفات من المجلد الفرعي إلى المجلد الرئيسي إذا لزم الأمر
+            for root, dirs, files in os.walk(BASE_DIR):
+                if "config.json" in files and root != BASE_DIR:
+                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها...")
+                    for f in os.listdir(root):
+                        shutil.move(os.path.join(root, f), os.path.join(BASE_DIR, f))
+                    break
             
             print("✅ تم فك الضغط وتجهيز البيئة!")
         except Exception as e:
@@ -74,8 +86,8 @@ def setup_ai():
 
     print("🧠 جاري تشغيل نسخة (1 مايو) من الذاكرة...")
     try:
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
+        tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
+        model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
         model.eval()
         print("🚀 نظام أناه جاهز الآن بالتطابق الكامل مع جهازك!")
     except Exception as e:
