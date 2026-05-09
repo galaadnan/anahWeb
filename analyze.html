@@ -39,7 +39,6 @@
   <main class="analyze-main shell">
     <div class="analyze-container">
 
-      <!-- الهيدر العلوي لصفحة التحليل -->
       <section class="analyze-header-top">
         <div>
           <p class="eyebrow fade-up">لوحة التحكم الذكية</p>
@@ -53,24 +52,20 @@
         </div>
       </section>
 
-      <!-- أزرار الفلترة الزمنية -->
       <div class="an-chip-group fade-up" style="margin-bottom:25px; display: flex; gap: 10px;">
         <button class="pill-button pill-ghost an-chip" data-range="7">آخر ٧ أيام</button>
         <button class="pill-button pill-ghost an-chip" data-range="30">آخر ٣٠ يوم</button>
         <button class="pill-button pill-primary an-chip is-active" data-range="90">آخر ٩٠ يوم</button>
       </div>
 
-      <!-- التوزيع الأساسي: الرسم البياني يسار، المشاعر والتوصيات يمين -->
       <section class="an-grid slide-right">
         
-        <!-- العمود الأول (يمين): المشاعر والتوصيات -->
         <div class="an-right-col">
           
           <section class="an-card">
             <h2 id="topMoodsTitle">المشاعر الأكثر ظهوراً</h2>
             <div class="an-metrics" id="topMoods">
-              <!-- يتولد تلقائياً من الـ JS -->
-            </div>
+              </div>
           </section>
 
           <section class="an-card" id="recommendationCard">
@@ -78,24 +73,11 @@
             <p class="an-subtext">بناءً على حالتك النفسية الأخيرة ونمط مشاعرك المدمج.</p>
             <p class="an-subtext" id="recWeekNote"></p>
             
-            <div class="rec-quote" id="recQuote">
-              <!-- التوصية تظهر هنا -->
-            </div>
-
-            <div class="rec-section">
-              <h4>إجراءات سريعة ⚡</h4>
-              <ul id="recQuick"></ul>
-            </div>
-
-            <div class="rec-section">
-              <h4>خطة تعزيز الوعي 🧘🏻‍♀️</h4>
-              <ul id="recDaily"></ul>
-            </div>
-          </section>
+            <div id="anah-recommendations-container"></div>
+            </section>
 
         </div>
 
-        <!-- العمود الثاني (يسار): الرسم البياني -->
         <div class="an-left-col">
           <section class="an-card an-card--primary">
             <h2 id="chartTitle">مخطط الاستقرار الشعوري</h2>
@@ -138,7 +120,6 @@
   <script src="firebase-config.js"></script>
   <script src="analyze.js?v=nified-final"></script>
 
-  <!-- الشات بوت -->
   <div class="chatbot-wrapper">
     <button class="chatbot-btn" id="chatbotBtn">
       <img src="https://cdn-icons-png.flaticon.com/512/4712/4712035.png" alt="Chatbot" class="chatbot-icon-img" />
@@ -161,7 +142,6 @@
     </div>
   </div>
 
-<!-- 👇 هذا الكود الجديد يدخل الانديكس بدال الرئيسيه-->
 <script>
   firebase.auth().onAuthStateChanged(user => {
   if (!user) {
