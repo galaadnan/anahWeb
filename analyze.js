@@ -407,28 +407,56 @@ async function loadAnalyzedData(days) {
 
   console.log("📅 Range:", startISO, "->", endISO);
 
-  const snap = await firebase.firestore()
-    .collection("users")
-    .doc(user.uid)
-    .collection("entries")
-    .where(firebase.firestore.FieldPath.documentId(), ">=", startISO)
-    .where(firebase.firestore.FieldPath.documentId(), "<=", endISO)
-    .get();
+ 
+    const db = firebase.firestore();
+    const userRef = db.collection("users").doc(user.uid);
 
-  console.log("📦 entries:", snap.size);
+    // اليوميات
+    const entriesSnap = await userRef
+      .collection("entries")
+      .where(firebase.firestore.FieldPath.documentId(), ">=", startISO)
+      .where(firebase.firestore.FieldPath.documentId(), "<=", endISO)
+      .get();
 
-  snap.forEach((doc) => {
-    const data = doc.data() || {};
-    const date = doc.id;
+    // الإيموجي
+    const emojiSnap = await userRef
+      .collection("emoji_moods")
+      .where(firebase.firestore.FieldPath.documentId(), ">=", startISO)
+      .where(firebase.firestore.FieldPath.documentId(), "<=", endISO)
+      .get();
 
-    const mood = normalizeMood(data.finalMood || "غير محدد");
-    const words = Number(data.words || 0);
+    const processedDates = new Set();
 
-    totalWords += words;
+    // أولاً: entries لهم أولوية
+    entriesSnap.forEach((doc) => {
+      const data = doc.data() || {};
+      const date = doc.id;
 
-    entryCounts[mood] = (entryCounts[mood] || 0) + 1;
-    historyList.push({ date, dominant: mood });
-  });
+      processedDates.add(date);
+
+      const mood = normalizeMood(data.finalMood || "غير محدد");
+      const words = Number(data.words || 0);
+
+      totalWords += words;
+
+      entryCounts[mood] = (entryCounts[mood] || 0) + 1;
+      historyList.push({ date, dominant: mood });
+    });
+
+    // ثانياً: emoji إذا ما فيه entry بنفس اليوم
+    emojiSnap.forEach((doc) => {
+      const data = doc.data() || {};
+      const date = doc.id;
+
+      if (processedDates.has(date)) return;
+
+      const mood = normalizeMood(data.mood || "غير محدد");
+
+      entryCounts[mood] = (entryCounts[mood] || 0) + 1;
+      historyList.push({ date, dominant: mood });
+    });
+
+
 
   return { entryCounts, historyList, totalWords };
 }
