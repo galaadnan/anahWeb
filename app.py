@@ -6,7 +6,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
+import base64
+import os
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
@@ -145,9 +147,6 @@ SYSTEM_PROMPT = """
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
-import base64
-import os
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # ------------------------------------------------
 # 🔒 إعدادات تشفير اليوميات (AES-256-GCM)
