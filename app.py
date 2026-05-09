@@ -1,17 +1,3 @@
-import os
-import re
-import gdown
-import torch
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from openai import OpenAI
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
-app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
-
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
 # ------------------------------------------------
 # ⚙️ Safetensors Engine & Google Drive Integration
 # ------------------------------------------------
@@ -50,7 +36,7 @@ def setup_ai():
 
 setup_ai()
 
-d# ------------------------------------------------
+# ------------------------------------------------
 # 🛡️ Rule-Based Layer (القاموس العامي والفصيح)
 # ------------------------------------------------
 # تقدري تضيفي أي كلمة تخطر على بالك هنا بكل سهولة
@@ -127,8 +113,7 @@ def query_model(text_list):
 # ------------------------------------------------
 last_emotion_memory = {}
 
-SYSTEM_PROMPT =
-"""
+SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
 
 التعليمات:
@@ -146,7 +131,6 @@ SYSTEM_PROMPT =
 - لا تقدم تشخيصات أو نصائح طبية.
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
-
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
