@@ -2,26 +2,51 @@ import os
 import re
 import gdown
 import torch
+import zipfile
+import base64
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from openai import OpenAI
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import base64
-import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# ⚙️ Safetensors Engine & Google Drive Integration
+# 🔒 إعدادات تشفير اليوميات (AES-256-GCM)
 # ------------------------------------------------
-# المعرف الخاص بملف model.safetensors
-FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu"
+SECRET_KEY_B64 = os.environ.get("JOURNAL_AES_KEY", "x8V2kL9pR4mN7qW1zB3yH6cF0jD5tG8sA2vE4uX7oI0=")
+
+def encrypt_journal(plain_text: str) -> str:
+    if not plain_text: return ""
+    key = base64.b64decode(SECRET_KEY_B64)
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), None)
+    return base64.b64encode(nonce + ciphertext).decode('utf-8')
+
+def decrypt_journal(encrypted_text_b64: str) -> str:
+    if not encrypted_text_b64: return ""
+    try:
+        key = base64.b64decode(SECRET_KEY_B64)
+        aesgcm = AESGCM(key)
+        encrypted_data = base64.b64decode(encrypted_text_b64)
+        nonce = encrypted_data[:12]
+        ciphertext = encrypted_data[12:]
+        return aesgcm.decrypt(nonce, ciphertext, None).decode('utf-8')
+    except Exception as e:
+        print(f"❌ خطأ في فك التشفير: {e}")
+        return "⚠️ [محتوى مشفر لا يمكن قراءته]"
+
+# ------------------------------------------------
+# ⚙️ Safetensors Engine (ZIP) & Google Drive Integration
+# ------------------------------------------------
+FILE_ID = "1FXO4qF1YdQd2oqgBPkP3x-wYWJp5O9pC" # الـ ID الجديد لملف ZIP
 MODEL_DIR = "."
-# نسميه model.safetensors عشان مكتبة transformers تتعرف عليه مباشرة
-WEIGHTS_PATH = os.path.join(MODEL_DIR, "model.safetensors")
+ZIP_PATH = os.path.join(MODEL_DIR, "model.zip")
 
 tokenizer = None
 model = None
@@ -29,55 +54,63 @@ LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعب�
 
 def setup_ai():
     global tokenizer, model
-    if not os.path.exists(WEIGHTS_PATH):
-        print("⏳ جاري تحميل ملف model.safetensors من Google Drive...")
+    
+    # 1. التحقق من وجود الملفات، إذا لم تكن موجودة نحمل ملف الـ ZIP
+    if not os.path.exists(os.path.join(MODEL_DIR, "config.json")):
+        print("⏳ جاري تحميل الحزمة الكاملة (ZIP) من Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
-            gdown.download(url, WEIGHTS_PATH, quiet=False)
-            print("✅ تم تحميل الأوزان بنجاح!")
+            gdown.download(url, ZIP_PATH, quiet=False)
+            
+            # 2. فك الضغط
+            print("📦 جاري فك ضغط الملفات...")
+            with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+                zip_ref.extractall(MODEL_DIR)
+            
+            print("✅ تم فك الضغط وتجهيز البيئة!")
         except Exception as e:
-            print(f"❌ فشل التحميل: {e}")
+            print(f"❌ فشل التحميل أو فك الضغط: {e}")
             raise e
 
-    print("🧠 جاري تحميل الموديل الكامل في الذاكرة (2GB RAM)...")
+    print("🧠 جاري تشغيل نسخة (1 مايو) من الذاكرة...")
     try:
-        # قراءة الموديل الأصلي بدون أي ضغط أو ONNX
         tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR)
         model.eval()
-        print("🚀 نظام أناه جاهز الآن بدقة 100%!")
+        print("🚀 نظام أناه جاهز الآن بالتطابق الكامل مع جهازك!")
     except Exception as e:
         print(f"❌ خطأ في تحميل المحرك: {e}")
         raise e
 
 setup_ai()
+
 # ------------------------------------------------
-# 🛡️ Rule-Based Layer (القاموس المطور للجذور)
+# 🛡️ Rule-Based Layer (القاموس المطور)
 # ------------------------------------------------
 EXPLICIT_RULES = {
-    # 😡 كلمات الغضب
+    # 😡 الغضب
     "غاضب": "غاضب", "معصب": "غاضب", "متنرفز": "غاضب", 
-    "منقهر": "غاضب", "مفور": "غاضب", "منفعل": "غاضب", "قهر": "غاضب",
-
-    # 😊 كلمات السعادة
+    "منقهر": "غاضب", "مفور": "غاضب", "منفعل": "غاضب", "قهر": "غاضب", "غضب": "غاضب",
+    
+    # 😊 السعادة
     "سعيد": "سعيد", "فرحان": "سعيد", "مبسوط": "سعيد", 
-    "مستانس": "سعيد", "طاير": "سعيد", "مبهوج": "سعيد", "فرح": "سعيد",
-
-    # 😢 كلمات الحزن
+    "مستانس": "سعيد", "طاير": "سعيد", "مبهوج": "سعيد", "فرح": "سعيد", "رضا": "سعيد",
+    
+    # 😢 الحزن
     "حزين": "حزين", "زعلان": "حزين", "متضايق": "حزين", 
-    "مكتئب": "حزين", "مهموم": "حزين", "مقهور": "حزين", "حزن": "حزين", "ضيق": "حزين",
-
-    # 🥱 كلمات التعب
+    "مكتئب": "حزين", "مهموم": "حزين", "مقهور": "حزين", "حزن": "حزين", "ضيق": "حزين", "إحباط": "حزين",
+    
+    # 🥱 التعب
     "تعبان": "تعبان", "مرهق": "تعبان", "هلكان": "تعبان", 
     "مهدود": "تعبان", "طافي": "تعبان", "دايخ": "تعبان", "مكسر": "تعبان", "تعب": "تعبان", "ارهاق": "تعبان",
-
-    # 😰 كلمات التوتر
+    
+    # 😰 التوتر
     "متوتر": "متوتر", "قلقان": "متوتر", "مرتبك": "متوتر", 
     "خايف": "متوتر", "مخبوص": "متوتر", "مشغول": "متوتر", "توتر": "متوتر", "قلق": "متوتر",
-
-    # 😌 كلمات الهدوء
+    
+    # 😌 الهدوء
     "هادئ": "هادئ", "رايق": "هادئ", "مروق": "هادئ", 
-    "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ"
+    "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ", "سكينة": "هادئ"
 }
 
 def query_model(text_list):
@@ -86,26 +119,21 @@ def query_model(text_list):
         for text in text_list:
             clean_text = text.strip()
             
-            # 1. فحص الـ Rule-Based أولاً
             matched_label = None
-            words = clean_text.split()
             
-            # زدنا الحد لـ 4 كلمات عشان الجمل العامية
-            if len(words) <= 4:
-                # 🔥 التعديل السحري: نبحث هل "الجذر" موجود كجزء من النص
-                for key, label in EXPLICIT_RULES.items():
-                    if key in clean_text:
-                        matched_label = label
-                        break
+            # فحص الـ Rule-Based على الجملة كاملة بدون شرط الطول
+            for key, label in EXPLICIT_RULES.items():
+                if key in clean_text:
+                    matched_label = label
+                    break
             
             if matched_label:
                 results.append({
                     "label": matched_label,
-                    "score": 1.0 # 100% ثقة
+                    "score": 1.0 
                 })
                 continue 
 
-            # 2. التحليل العميق بالموديل للجمل الطويلة
             inputs = tokenizer(clean_text, return_tensors="pt", padding=True, truncation=True, max_length=128)
             with torch.no_grad():
                 outputs = model(**inputs)
@@ -121,6 +149,7 @@ def query_model(text_list):
     except Exception as e:
         print(f"❌ Analysis Error: {e}")
         return None
+
 # ------------------------------------------------
 # 🧠 Chatbot Memory & Prompt
 # ------------------------------------------------
@@ -144,38 +173,10 @@ SYSTEM_PROMPT = """
 - لا تقدم تشخيصات أو نصائح طبية.
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
+
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
-
-# ------------------------------------------------
-# 🔒 إعدادات تشفير اليوميات (AES-256-GCM)
-# ------------------------------------------------
-# تأكدي من إضافة JOURNAL_AES_KEY في Environment Variables في ريندر
-SECRET_KEY_B64 = os.environ.get("JOURNAL_AES_KEY", "kK4e/xY8jQZ3hF7sL2wV9pM5nC1mB4vX6zR8tN0qW2U=")
-
-def encrypt_journal(plain_text: str) -> str:
-    """تشفير النص في الباك أند قبل الحفظ"""
-    if not plain_text: return ""
-    key = base64.b64decode(SECRET_KEY_B64)
-    aesgcm = AESGCM(key)
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), None)
-    return base64.b64encode(nonce + ciphertext).decode('utf-8')
-
-def decrypt_journal(encrypted_text_b64: str) -> str:
-    """فك التشفير في الباك أند قبل الإرسال للمستخدم"""
-    if not encrypted_text_b64: return ""
-    try:
-        key = base64.b64decode(SECRET_KEY_B64)
-        aesgcm = AESGCM(key)
-        encrypted_data = base64.b64decode(encrypted_text_b64)
-        nonce = encrypted_data[:12]
-        ciphertext = encrypted_data[12:]
-        return aesgcm.decrypt(nonce, ciphertext, None).decode('utf-8')
-    except Exception as e:
-        print(f"❌ خطأ في فك التشفير: {e}")
-        return "⚠️ [محتوى مشفر لا يمكن قراءته]"
 
 # ------------------------------------------------
 # 🌐 Website Routes
@@ -184,7 +185,6 @@ def decrypt_journal(encrypted_text_b64: str) -> str:
 def index():
     return send_from_directory(".", "home.html")
 
-# --- مسارات اليوميات المشفرة (الجديدة) ---
 @app.route("/save_journal", methods=["POST"])
 def save_journal():
     data = request.get_json(silent=True) or {}
@@ -193,24 +193,17 @@ def save_journal():
     if not plain_text:
         return jsonify({"error": "لا يوجد نص للحفظ"}), 400
 
-    # 1. التشفير في الباك أند
     encrypted_text = encrypt_journal(plain_text)
-    
-    # 2. هنا الكود الخاص بك لحفظ (encrypted_text) في الداتابيس أو الملف
-    # db.save_journal(user_id, encrypted_text)
-    
+    # قم بحفظ encrypted_text في قاعدة البيانات هنا
     return jsonify({"status": "success", "message": "تم حفظ يومياتك بأمان وتشفيرها!"})
 
 @app.route("/get_journals", methods=["GET"])
 def get_journals():
-    # 1. هنا الكود الخاص بك لسحب اليوميات المشفرة من الداتابيس
-    # encrypted_from_db = db.get_user_journals(user_id)
-    # هذا مجرد نص وهمي للتجربة، استبدليه ببياناتك الفعلية
+    # اسحب اليوميات المشفرة من قاعدة البيانات هنا
     encrypted_from_db = [] 
     
     decrypted_journals = []
     for journal in encrypted_from_db:
-        # 2. فك التشفير قبل الإرسال للفرونت أند
         original_text = decrypt_journal(journal["encrypted_content"])
         decrypted_journals.append({
             "date": journal["date"],
@@ -219,7 +212,6 @@ def get_journals():
         
     return jsonify({"journals": decrypted_journals})
 
-# --- مسارات التحليل والمحادثة الأساسية ---
 @app.route("/predict", methods=["POST"])
 def predict():
     if model is None:
