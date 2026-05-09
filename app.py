@@ -54,52 +54,38 @@ tokenizer = None
 model = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
+# تأكدي إن هذي المتغيرات فوق الدالة
+FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu" 
+WEIGHTS_FILENAME = "model.safetensors" # تأكدي إن هذا هو اسم الملف في درايف
+WEIGHTS_PATH = os.path.join(BASE_DIR, WEIGHTS_FILENAME)
 
 def setup_ai():
     global tokenizer, model
     
-    config_filename = "config.json"
-    weights_filename = "model.safetensors" 
-
-    if not os.path.exists(os.path.join(BASE_DIR, config_filename)):
-        print("⏳ الموديل مو موجود.. جاري سحبه من درايف وفك التشفير...")
+    # 1. التحقق من وجود الملف الكبير (الأوزان)
+    if not os.path.exists(WEIGHTS_PATH):
+        print(f"⏳ ملف الأوزان ({WEIGHTS_FILENAME}) غير موجود، جاري تحميله من Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
-            gdown.download(url, ZIP_PATH, quiet=False)
-            
-            with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-                zip_ref.extractall(BASE_DIR)
-            
-            # البحث عن المجلد المخفي وسحب الملفات منه للمجلد الرئيسي
-            for root, dirs, files in os.walk(BASE_DIR):
-                if config_filename in files and root != BASE_DIR:
-                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها للمجلد الرئيسي...")
-                    for f in os.listdir(root):
-                        src_file = os.path.join(root, f)
-                        dst_file = os.path.join(BASE_DIR, f)
-                        if os.path.exists(dst_file):
-                            if os.path.isdir(dst_file): shutil.rmtree(dst_file)
-                            else: os.remove(dst_file)
-                        shutil.move(src_file, dst_file)
-                    break
-            
-            if os.path.exists(ZIP_PATH): os.remove(ZIP_PATH)
-            
+            gdown.download(url, WEIGHTS_PATH, quiet=False)
+            print("✅ تم تحميل ملف الأوزان بنجاح!")
         except Exception as e:
-            print(f"❌ فشل في تجهيز الموديل: {e}")
+            print(f"❌ فشل تحميل ملف الأوزان: {e}")
             raise e
 
+    # 2. تحميل الموديل والتوكنايزر في الذاكرة
+    print("🧠 جاري تحميل الأوزان في الذاكرة (نسخة 1 مايو)...")
     try:
-        print("🧠 جاري تحميل الأوزان في الذاكرة (نسخة 1 مايو)...")
+        # التوكنايزر والموديل بيقرأون من BASE_DIR (GitHub + الوزن اللي نزلناه)
         tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
         model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
         model.eval()
-        print("🚀 أبشرك.. نظام أناه جاهز وشغال!")
+        print("🚀 أبشرك.. نظام أناه جاهز وشغال 100%!")
     except Exception as e:
-        print(f"❌ خطأ في تحميل المحرك: {e}")
-        print(f"📁 الملفات المتوفرة: {os.listdir(BASE_DIR)}")
+        print(f"❌ خطأ في تشغيل المحرك: {e}")
+        # عشان نعرف إيش صار بالضبط لو فشل
+        print(f"📁 الملفات اللي قدر السيرفر يشوفها: {os.listdir(BASE_DIR)}")
         raise e
-
 setup_ai()
 
 # ------------------------------------------------
