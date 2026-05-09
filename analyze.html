@@ -4,10 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>أناه | التحليل الشعوري</title>
+  <link rel="icon" type="image/png" href="images/anah.png" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="mobile.css" />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* تنسيق قسم المراجع العلمية لضمان ظهوره بشكل فخم */
+    .references-section {
+      margin-top: 40px;
+      padding: 25px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 20px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      clear: both;
+    }
+    .ref-title {
+      font-size: 1.2rem;
+      color: #444;
+      margin-bottom: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ref-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .ref-item {
+      background: #ffffff;
+      padding: 15px;
+      border-radius: 12px;
+      border-right: 4px solid #b2d8d8;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+    }
+    .ref-item strong {
+      display: block;
+      color: #2d3436;
+      font-size: 0.95rem;
+      margin-bottom: 5px;
+    }
+    .ref-item span {
+      color: #636e72;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+  </style>
 </head>
 
 <body class="page-analyze has-animated-bg">
@@ -63,8 +108,7 @@
           
           <section class="an-card">
             <h2 id="topMoodsTitle">المشاعر الأكثر ظهوراً</h2>
-            <div class="an-metrics" id="topMoods">
-              </div>
+            <div class="an-metrics" id="topMoods"></div>
           </section>
 
           <section class="an-card" id="recommendationCard">
@@ -73,7 +117,7 @@
             <p class="an-subtext" id="recWeekNote"></p>
             
             <div id="anah-recommendations-container"></div>
-            </section>
+          </section>
 
         </div>
 
@@ -90,6 +134,28 @@
         </div>
 
       </section>
+
+      <div class="references-section">
+          <h3 class="ref-title">المراجع العلمية للتوصيات</h3>
+          <div class="ref-grid">
+              <div class="ref-item">
+                  <strong>الإسعاف النفسي الأولي (PFA):</strong>
+                  <span>منظمة الصحة العالمية (WHO) - دليل الممارسين الميدانيين.</span>
+              </div>
+              <div class="ref-item">
+                  <strong>العلاج السلوكي المعرفي (CBT):</strong>
+                  <span>Beck, J. S. (2020). أساسيات العلاج المعرفي السلوكي وما بعده.</span>
+              </div>
+              <div class="ref-item">
+                  <strong>تقنيات التجذر (Grounding):</strong>
+                  <span>Linehan, M. M. (2014). دليل تدريب مهارات DBT.</span>
+              </div>
+              <div class="ref-item">
+                  <strong>الكتابة التعبيرية:</strong>
+                  <span>Pennebaker, J. W. تحسين الصحة من خلال التدوين.</span>
+              </div>
+          </div>
+      </div>
 
     </div>
   </main>
@@ -140,34 +206,14 @@
       </div>
     </div>
   </div>
-<div class="references-section">
-    <h3 class="ref-title"><i class="fas fa-book-reader"></i> المراجع العلمية للتوصيات</h3>
-    <div class="ref-grid">
-        <div class="ref-item">
-            <strong>الإسعاف النفسي الأولي (PFA):</strong>
-            <span>منظمة الصحة العالمية (WHO) - دليل الممارسين الميدانيين.</span>
-        </div>
-        <div class="ref-item">
-            <strong>العلاج السلوكي المعرفي (CBT):</strong>
-            <span>Beck, J. S. (2020). أساسيات العلاج المعرفي السلوكي وما بعده.</span>
-        </div>
-        <div class="ref-item">
-            <strong>تقنيات التجذر (Grounding):</strong>
-            <span>Linehan, M. M. (2014). دليل تدريب مهارات DBT.</span>
-        </div>
-        <div class="ref-item">
-            <strong>الكتابة التعبيرية:</strong>
-            <span>Pennebaker, J. W. تحسين الصحة من خلال التدوين.</span>
-        </div>
-    </div>
-</div>
-<script>
-  firebase.auth().onAuthStateChanged(user => {
-  if (!user) {
-    window.location.href = "SignOrLogin.html";
-  }
-});
-</script>
+
+  <script>
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "SignOrLogin.html";
+      }
+    });
+  </script>
 
 </body>
 </html>
