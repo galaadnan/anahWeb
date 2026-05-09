@@ -3,11 +3,11 @@ console.log("✅ analyze.js v7 loaded (range persistence fixed)");
 let chartInstance = null;
 
 // ثابت ترتيب المشاعر (عشان الرسم ما يتغير ترتيب أعمدته كل مرة)
-const MOOD_ORDER = ["سعيد", "لا بأس", "حزين", "متوتر", "غاضب", "متعب", "غير محدد"];
+const MOOD_ORDER = ["سعيد", "هادئ", "حزين", "متوتر", "غاضب", "متعب", "غير محدد"];
 
 const MOOD_IMAGES = {
   "سعيد": "images/Habby.png",
-  "لا بأس": "images/Ok.png",
+  "هادئ": "images/Ok.png",
   "غاضب": "images/Angry.png",
   "حزين": "images/Sad.png",
   "متوتر": "images/worried.png",
@@ -79,7 +79,7 @@ const RECOMMENDATIONS = {
       "جهّز مهام الغد ببساطة."
     ]
   },
-  "لا بأس": {
+  "هادئ": {
     quote: "ثباتك اليوم إنجاز بحد ذاته.",
     quick: [
       "تنفّس ببطء دقيقة واحدة.",
@@ -109,7 +109,7 @@ const RECOMMENDATIONS = {
 const EVIDENCE_LIBRARY = [
   {
     id: "BREATH_4_6",
-    forMoods: ["متوتر", "غاضب", "حزين", "متعب", "لا بأس", "غير محدد"],
+    forMoods: ["متوتر", "غاضب", "حزين", "متعب", "هادئ", "غير محدد"],
     title: "تنفّس بطيء (4/6)",
     steps: ["خذ شهيق 4 ثوانٍ", "ازفر 6 ثوانٍ", "كرر لمدة دقيقتين"],
     refsShort: ["تنفس بطيء (HRV)"],
@@ -125,7 +125,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "WRITE_3MIN",
-    forMoods: ["حزين", "متوتر", "غير محدد", "لا بأس"],
+    forMoods: ["حزين", "متوتر", "غير محدد", "هادئ"],
     title: "كتابة تعبيرية 3 دقائق",
     steps: ["اكتب 3 دقائق بلا توقف", "لا تهتم بالصياغة", "اختم: (ما أحتاجه الآن هو...)"],
     refsShort: ["كتابة تعبيرية"],
@@ -133,7 +133,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "BA_ONE_STEP",
-    forMoods: ["حزين", "متعب", "لا بأس"],
+    forMoods: ["حزين", "متعب", "هادئ"],
     title: "خطوة واحدة (تنشيط سلوكي)",
     steps: ["اختر نشاط 5–10 دقائق", "ابدأ بدون مثالية", "لاحظ شعورك بعده"],
     refsShort: ["تنشيط سلوكي"],
@@ -141,7 +141,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "MOVE_3MIN",
-    forMoods: ["حزين", "غاضب", "متوتر", "متعب", "لا بأس"],
+    forMoods: ["حزين", "غاضب", "متوتر", "متعب", "هادئ"],
     title: "تحريك الجسم 3 دقائق",
     steps: ["قف وتمدد 30 ثانية", "امشِ 2 دقيقة", "اشرب ماء في النهاية"],
     refsShort: ["نشاط خفيف"],
@@ -196,7 +196,8 @@ function normalizeMood(raw) {
 
   if (m === "قلق" || m === "متوتر") m = "متوتر";
   if (m === "تعبان") m = "متعب";
-  if (m === "هادئ") m = "لا بأس";
+  if (m === "لا بأس") m = "هادئ";
+  if (m === "هادى") m = "هادئ";
 
   return MOOD_IMAGES[m] ? m : "غير محدد";
 }
@@ -207,7 +208,7 @@ function moodColor(m) {
   if (m === "حزين") return "#7aacea";
   if (m === "متوتر") return "#eba96b";
   if (m === "متعب") return "#ffee6d";
-  if (m === "لا بأس") return "#a29bfe";
+  if (m === "هادئ") return "#a29bfe";
   return "#ccabd8";
 }
 

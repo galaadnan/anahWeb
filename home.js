@@ -115,7 +115,7 @@ let quotes = [];
 let quotesLoaded = false;
 
 function normalizeMood(raw) {
-  if (!raw) return "لا بأس";
+  if (!raw) return "هادئ";
 
   const mood = String(raw).toLowerCase().trim();
 
@@ -160,7 +160,15 @@ function normalizeMood(raw) {
     return "متعب";
   }
 
-  return "لا بأس";
+  if (
+    mood.includes("هادئ") ||
+    mood.includes("calm") ||
+    mood.includes("لا بأس")
+  ) {
+    return "هادئ";
+  }
+
+  return "هادئ";
 }
 
 async function loadQuotes() {
@@ -206,7 +214,7 @@ function pickMoodQuote(mood) {
 }
 
 async function getLatestMoodFromFirebase() {
-  const localMood = localStorage.getItem("anah_current_mood") || "لا بأس";
+  const localMood = localStorage.getItem("anah_current_mood") || "هادئ";
 
   if (!hasFirebaseAuth() || !hasFirestore()) {
     return normalizeMood(localMood);
@@ -311,7 +319,7 @@ function clearActiveMoodUI() {
 function setActiveMoodUI(moodName, saveLocal = true) {
   const buttons = getMoodButtons();
   const hint = ensureMoodHint();
-  const normalizedMoodName = moodName || "لا بأس";
+  const normalizedMoodName = moodName || "هادئ";
 
   clearActiveMoodUI();
 
