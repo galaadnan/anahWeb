@@ -32,7 +32,7 @@ const RECOMMENDATIONS = {
       "دلّل نفسك بشيء بسيط تحبه."
     ]
   },
-  "قلق": {
+  "متوتر": {
     quote: "اهدأ… أنت تبذل ما بوسعك.",
     quick: [
       "تمرّن 5-4-3-2-1 للتركيز.",
@@ -109,7 +109,7 @@ const RECOMMENDATIONS = {
 const EVIDENCE_LIBRARY = [
   {
     id: "BREATH_4_6",
-    forMoods: ["قلق", "غاضب", "حزين", "متعب", "لا بأس", "غير محدد"],
+    forMoods: ["متوتر", "غاضب", "حزين", "متعب", "لا بأس", "غير محدد"],
     title: "تنفّس بطيء (4/6)",
     steps: ["خذ شهيق 4 ثوانٍ", "ازفر 6 ثوانٍ", "كرر لمدة دقيقتين"],
     refsShort: ["تنفس بطيء (HRV)"],
@@ -117,7 +117,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "GROUND_54321",
-    forMoods: ["قلق", "غاضب", "غير محدد"],
+    forMoods: ["متوتر", "غاضب", "غير محدد"],
     title: "تهدئة بالحواس (5-4-3-2-1)",
     steps: ["5 أشياء تراها", "4 تلمسها", "3 تسمعها", "2 تشمها", "1 تتذوقها"],
     refsShort: ["Grounding (5-4-3-2-1)"],
@@ -125,7 +125,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "WRITE_3MIN",
-    forMoods: ["حزين", "قلق", "غير محدد", "لا بأس"],
+    forMoods: ["حزين", "متوتر", "غير محدد", "لا بأس"],
     title: "كتابة تعبيرية 3 دقائق",
     steps: ["اكتب 3 دقائق بلا توقف", "لا تهتم بالصياغة", "اختم: (ما أحتاجه الآن هو...)"],
     refsShort: ["كتابة تعبيرية"],
@@ -141,7 +141,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "MOVE_3MIN",
-    forMoods: ["حزين", "غاضب", "قلق", "متعب", "لا بأس"],
+    forMoods: ["حزين", "غاضب", "متوتر", "متعب", "لا بأس"],
     title: "تحريك الجسم 3 دقائق",
     steps: ["قف وتمدد 30 ثانية", "امشِ 2 دقيقة", "اشرب ماء في النهاية"],
     refsShort: ["نشاط خفيف"],
@@ -149,7 +149,7 @@ const EVIDENCE_LIBRARY = [
   },
   {
     id: "SLEEP_LIGHT",
-    forMoods: ["متعب", "قلق"],
+    forMoods: ["متعب", "متوتر"],
     title: "تهيئة نوم لطيفة",
     steps: ["خفّف الإضاءة 30 دقيقة", "أوقف الإشعارات", "تنفّس ببطء دقيقتين"],
     refsShort: ["Sleep hygiene"],
@@ -194,8 +194,7 @@ function cleanMood(m) {
 function normalizeMood(raw) {
   let m = cleanMood(raw);
 
-  if (m === "متوتر") m = "متوتر";
-  if (m === "قلق") m = "متوتر";
+  if (m === "قلق" || m === "متوتر") m = "متوتر";
   if (m === "تعبان") m = "متعب";
   if (m === "هادئ") m = "لا بأس";
 
@@ -206,7 +205,7 @@ function moodColor(m) {
   if (m === "غاضب") return "#dd8181";
   if (m === "سعيد") return "#5fcbae";
   if (m === "حزين") return "#7aacea";
-  if (m === "قلق") return "#eba96b";
+  if (m === "متوتر") return "#eba96b";
   if (m === "متعب") return "#ffee6d";
   if (m === "لا بأس") return "#a29bfe";
   return "#ccabd8";
