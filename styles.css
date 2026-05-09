@@ -1844,3 +1844,40 @@ main { padding-block: 26px 40px; }
     font-size: 0.95rem;
   }
 }
+.references-section {
+    margin-top: 40px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.5); /* خلفية شفافة بسيطة */
+    border-radius: 15px;
+    border-top: 1px solid #e0e0e0;
+    text-align: right;
+}
+
+.ref-title {
+    font-size: 1.1rem;
+    color: #555;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.ref-item {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.6;
+    padding: 10px;
+    border-right: 3px solid #b2d8d8; /* لون هادئ يناسب أناه */
+    background: #f9f9f9;
+    border-radius: 5px;
+}
+
+.ref-item strong {
+    display: block;
+    color: #333;
+    margin-bottom: 3px;
+}
