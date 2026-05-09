@@ -54,54 +54,60 @@ tokenizer = None
 model = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
-import shutil # تأكدي إنك أضفتِ هذا السطر مع المكتبات فوق
 
 def setup_ai():
     global tokenizer, model
     
-    # تحديد الملفات الأساسية المطلوبة للتشغيل
-    config_path = os.path.join(BASE_DIR, "config.json")
-    weights_path = os.path.join(BASE_DIR, "model.safetensors")
-    # ملاحظة: إذا كان موديلك يستخدم pytorch_model.bin بدلاً من safetensors، غيري الاسم فوق
-    
-    # 1. التحقق: إذا نقص أي ملف أساسي، نبدأ عملية تحميل نظيفة
-    if not os.path.exists(config_path) or not os.path.exists(weights_path):
-        print("⏳ ملفات الموديل ناقصة أو غير مكتملة، جاري التحميل من Google Drive...")
-        
-        # تنظيف أي ملفات قديمة قد تسبب تعارض
-        if os.path.exists(config_path): os.remove(config_path)
-        
+    # الملفات اللي الموديل مستحيل يشتغل بدونها
+    config_filename = "config.json"
+    # تأكدي إن ملف الأوزان في الزيب حقك اسمه model.safetensors أو غيريه هنا لـ pytorch_model.bin
+    weights_filename = "model.safetensors" 
+
+    # 1. التحقق: إذا الموديل مو موجود في المجلد الرئيسي، نبدأ الأكشن
+    if not os.path.exists(os.path.join(BASE_DIR, config_filename)):
+        print("⏳ الموديل مو موجود.. جاري سحبه من درايف وفك التشفير...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
-            # تحميل ملف الـ ZIP
             gdown.download(url, ZIP_PATH, quiet=False)
             
-            # فك الضغط
-            print("📦 جاري فك ضغط الملفات...")
             with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
                 zip_ref.extractall(BASE_DIR)
             
-            # ✨ النقل الذكي: البحث عن المجلد الفرعي (مثل checkpoint-1821) ونقل محتوياته للأعلى
+            # ✨ الجزء السحري: البحث عن المجلد المخفي وسحب الملفات منه
+            found_config = False
             for root, dirs, files in os.walk(BASE_DIR):
-                if "config.json" in files and root != BASE_DIR:
-                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها للمجلد الرئيسي...")
+                if config_filename in files and root != BASE_DIR:
+                    print(f"📂 لقيت الملفات داخل مجلد: {root}.. جاري سحبها للمجلد الرئيسي!")
                     for f in os.listdir(root):
-                        src = os.path.join(root, f)
-                        dst = os.path.join(BASE_DIR, f)
-                        # إذا الملف موجود مسبقاً نمسحه عشان ننقل الجديد
-                        if os.path.exists(dst): 
-                            if os.path.isdir(dst): shutil.rmtree(dst)
-                            else: os.remove(dst)
-                        shutil.move(src, dst)
+                        src_file = os.path.join(root, f)
+                        dst_file = os.path.join(BASE_DIR, f)
+                        if os.path.exists(dst_file):
+                            if os.path.isdir(dst_file): shutil.rmtree(dst_file)
+                            else: os.remove(dst_file)
+                        shutil.move(src_file, dst_file)
+                    found_config = True
                     break
             
-            # تنظيف: حذف ملف الـ ZIP بعد فك الضغط لتوفير مساحة
+            # تنظيف: نحذف الزيب عشان الرام ما ينفجر علينا
             if os.path.exists(ZIP_PATH): os.remove(ZIP_PATH)
-            print("✅ تم تجهيز البيئة بنجاح!")
             
         except Exception as e:
-            print(f"❌ فشل في تحميل أو تجهيز الموديل: {e}")
+            print(f"❌ فشل في تجهيز الموديل: {e}")
             raise e
+
+    # 2. التحميل النهائي في الذاكرة
+    try:
+        print("🧠 جاري تحميل الأوزان في الذاكرة (نسخة 1 مايو)...")
+        # نستخدم BASE_DIR مباشرة لأننا سحبنا الملفات له
+        tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
+        model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
+        model.eval()
+        print("🚀 أبشرك.. نظام أناه جاهز وشغال!")
+    except Exception as e:
+        print(f"❌ تعثرت في الخطوة الأخيرة: {e}")
+        # نطبع قائمة الملفات عشان لو صار خطأ نعرف إيش اللي ناقص
+        print(f"📁 الملفات اللي قدر السيرفر يشوفها: {os.listdir(BASE_DIR)}")
+        raise e
 
     # 2. تشغيل الموديل والتوكنايزر من الذاكرة
     print("🧠 جاري تشغيل نسخة (1 مايو) من الذاكرة...")
