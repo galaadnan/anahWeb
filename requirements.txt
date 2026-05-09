@@ -6,3 +6,4 @@ transformers
 safetensors
 openai
 gunicorn
+cryptography
