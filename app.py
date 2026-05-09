@@ -145,15 +145,84 @@ SYSTEM_PROMPT = """
 def split_arabic_sentences(text: str):
     sentences = re.split(r'[.؟!،\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 3]
+import base64
+import os
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+# ------------------------------------------------
+# 🔒 إعدادات تشفير اليوميات (AES-256-GCM)
+# ------------------------------------------------
+# تأكدي من إضافة JOURNAL_AES_KEY في Environment Variables في ريندر
+SECRET_KEY_B64 = os.environ.get("JOURNAL_AES_KEY", "kK4e/xY8jQZ3hF7sL2wV9pM5nC1mB4vX6zR8tN0qW2U=")
+
+def encrypt_journal(plain_text: str) -> str:
+    """تشفير النص في الباك أند قبل الحفظ"""
+    if not plain_text: return ""
+    key = base64.b64decode(SECRET_KEY_B64)
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, plain_text.encode('utf-8'), None)
+    return base64.b64encode(nonce + ciphertext).decode('utf-8')
+
+def decrypt_journal(encrypted_text_b64: str) -> str:
+    """فك التشفير في الباك أند قبل الإرسال للمستخدم"""
+    if not encrypted_text_b64: return ""
+    try:
+        key = base64.b64decode(SECRET_KEY_B64)
+        aesgcm = AESGCM(key)
+        encrypted_data = base64.b64decode(encrypted_text_b64)
+        nonce = encrypted_data[:12]
+        ciphertext = encrypted_data[12:]
+        return aesgcm.decrypt(nonce, ciphertext, None).decode('utf-8')
+    except Exception as e:
+        print(f"❌ خطأ في فك التشفير: {e}")
+        return "⚠️ [محتوى مشفر لا يمكن قراءته]"
+
+# ------------------------------------------------
 # 🌐 Website Routes
+# ------------------------------------------------
 @app.route("/")
 def index():
     return send_from_directory(".", "home.html")
 
+# --- مسارات اليوميات المشفرة (الجديدة) ---
+@app.route("/save_journal", methods=["POST"])
+def save_journal():
+    data = request.get_json(silent=True) or {}
+    plain_text = (data.get("content") or "").strip()
+    
+    if not plain_text:
+        return jsonify({"error": "لا يوجد نص للحفظ"}), 400
+
+    # 1. التشفير في الباك أند
+    encrypted_text = encrypt_journal(plain_text)
+    
+    # 2. هنا الكود الخاص بك لحفظ (encrypted_text) في الداتابيس أو الملف
+    # db.save_journal(user_id, encrypted_text)
+    
+    return jsonify({"status": "success", "message": "تم حفظ يومياتك بأمان وتشفيرها!"})
+
+@app.route("/get_journals", methods=["GET"])
+def get_journals():
+    # 1. هنا الكود الخاص بك لسحب اليوميات المشفرة من الداتابيس
+    # encrypted_from_db = db.get_user_journals(user_id)
+    # هذا مجرد نص وهمي للتجربة، استبدليه ببياناتك الفعلية
+    encrypted_from_db = [] 
+    
+    decrypted_journals = []
+    for journal in encrypted_from_db:
+        # 2. فك التشفير قبل الإرسال للفرونت أند
+        original_text = decrypt_journal(journal["encrypted_content"])
+        decrypted_journals.append({
+            "date": journal["date"],
+            "content": original_text
+        })
+        
+    return jsonify({"journals": decrypted_journals})
+
+# --- مسارات التحليل والمحادثة الأساسية ---
 @app.route("/predict", methods=["POST"])
 def predict():
-    # تم التعديل هنا لفحص model بدلاً من onnx_session
     if model is None:
         return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
 
@@ -162,7 +231,6 @@ def predict():
     if not text: return jsonify({"error": "No text"}), 400
 
     sentences = split_arabic_sentences(text) or [text]
-    # تم تصحيح اسم الدالة هنا إلى query_model
     results = query_model(sentences)
     if not results: return jsonify({"error": "AI Engine Error"}), 500
 
@@ -192,7 +260,6 @@ def chat():
     if len(user_message) < 3: return jsonify({"reply": "اكتب جملة أوضح قليلاً."})
 
     try:
-        # تم تصحيح اسم الدالة هنا إلى query_model
         res = query_model([user_message])
         emotion = res[0]["label"] if res else "غير محدد"
         last_emotion_memory["last"] = emotion
@@ -210,6 +277,5 @@ def chat():
         return jsonify({"reply": "أنا هنا لأسمعك، خذ نفساً عميقاً."})
 
 if __name__ == "__main__":
-    # ريندر يستخدم بورت 10000 عادة
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
