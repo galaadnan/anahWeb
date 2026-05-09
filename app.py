@@ -45,8 +45,8 @@ def decrypt_journal(encrypted_text_b64: str) -> str:
 # ------------------------------------------------
 # ⚙️ Safetensors Engine (ZIP) & Google Drive Integration
 # ------------------------------------------------
-FILE_ID = "1FXO4qF1YdQd2oqgBPkP3x-wYWJp5O9pC" # الـ ID الجديد لملف ZIP
-# استخدام المسار المطلق لضمان عمله بشكل صحيح على خوادم ريندر
+# تم تحديث FILE_ID بناءً على الرابط الجديد المقدم
+FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu" 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ZIP_PATH = os.path.join(BASE_DIR, "model.zip")
 
@@ -58,12 +58,9 @@ LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعب�
 def setup_ai():
     global tokenizer, model
     
-    # الملفات اللي الموديل مستحيل يشتغل بدونها
     config_filename = "config.json"
-    # تأكدي إن ملف الأوزان في الزيب حقك اسمه model.safetensors أو غيريه هنا لـ pytorch_model.bin
     weights_filename = "model.safetensors" 
 
-    # 1. التحقق: إذا الموديل مو موجود في المجلد الرئيسي، نبدأ الأكشن
     if not os.path.exists(os.path.join(BASE_DIR, config_filename)):
         print("⏳ الموديل مو موجود.. جاري سحبه من درايف وفك التشفير...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
@@ -73,11 +70,10 @@ def setup_ai():
             with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
                 zip_ref.extractall(BASE_DIR)
             
-            # ✨ الجزء السحري: البحث عن المجلد المخفي وسحب الملفات منه
-            found_config = False
+            # البحث عن المجلد المخفي وسحب الملفات منه للمجلد الرئيسي
             for root, dirs, files in os.walk(BASE_DIR):
                 if config_filename in files and root != BASE_DIR:
-                    print(f"📂 لقيت الملفات داخل مجلد: {root}.. جاري سحبها للمجلد الرئيسي!")
+                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها للمجلد الرئيسي...")
                     for f in os.listdir(root):
                         src_file = os.path.join(root, f)
                         dst_file = os.path.join(BASE_DIR, f)
@@ -85,69 +81,41 @@ def setup_ai():
                             if os.path.isdir(dst_file): shutil.rmtree(dst_file)
                             else: os.remove(dst_file)
                         shutil.move(src_file, dst_file)
-                    found_config = True
                     break
             
-            # تنظيف: نحذف الزيب عشان الرام ما ينفجر علينا
             if os.path.exists(ZIP_PATH): os.remove(ZIP_PATH)
             
         except Exception as e:
             print(f"❌ فشل في تجهيز الموديل: {e}")
             raise e
 
-    # 2. التحميل النهائي في الذاكرة
     try:
         print("🧠 جاري تحميل الأوزان في الذاكرة (نسخة 1 مايو)...")
-        # نستخدم BASE_DIR مباشرة لأننا سحبنا الملفات له
         tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
         model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
         model.eval()
         print("🚀 أبشرك.. نظام أناه جاهز وشغال!")
     except Exception as e:
-        print(f"❌ تعثرت في الخطوة الأخيرة: {e}")
-        # نطبع قائمة الملفات عشان لو صار خطأ نعرف إيش اللي ناقص
-        print(f"📁 الملفات اللي قدر السيرفر يشوفها: {os.listdir(BASE_DIR)}")
+        print(f"❌ خطأ في تحميل المحرك: {e}")
+        print(f"📁 الملفات المتوفرة: {os.listdir(BASE_DIR)}")
         raise e
 
-    # 2. تشغيل الموديل والتوكنايزر من الذاكرة
-    print("🧠 جاري تشغيل نسخة (1 مايو) من الذاكرة...")
-    try:
-        # نحمل من BASE_DIR لأننا تأكدنا أن الملفات أصبحت هناك
-        tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
-        model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
-        model.eval()
-        print("🚀 نظام أناه جاهز الآن بالتطابق الكامل مع جهازك!")
-    except Exception as e:
-        # لو فشل التحميل، نطبع قائمة الملفات عشان نعرف إيش المشكلة بالضبط
-        print(f"❌ خطأ في تحميل المحرك: {e}")
-        print(f"📁 الملفات المتوفرة حالياً في السيرفر: {os.listdir(BASE_DIR)}")
-        raise e
+setup_ai()
 
 # ------------------------------------------------
 # 🛡️ Rule-Based Layer (القاموس المطور)
 # ------------------------------------------------
 EXPLICIT_RULES = {
-    # 😡 الغضب
     "غاضب": "غاضب", "معصب": "غاضب", "متنرفز": "غاضب", 
     "منقهر": "غاضب", "مفور": "غاضب", "منفعل": "غاضب", "قهر": "غاضب", "غضب": "غاضب",
-    
-    # 😊 السعادة
     "سعيد": "سعيد", "فرحان": "سعيد", "مبسوط": "سعيد", 
     "مستانس": "سعيد", "طاير": "سعيد", "مبهوج": "سعيد", "فرح": "سعيد", "رضا": "سعيد",
-    
-    # 😢 الحزن
     "حزين": "حزين", "زعلان": "حزين", "متضايق": "حزين", 
     "مكتئب": "حزين", "مهموم": "حزين", "مقهور": "حزين", "حزن": "حزين", "ضيق": "حزين", "إحباط": "حزين",
-    
-    # 🥱 التعب
     "تعبان": "تعبان", "مرهق": "تعبان", "هلكان": "تعبان", 
     "مهدود": "تعبان", "طافي": "تعبان", "دايخ": "تعبان", "مكسر": "تعبان", "تعب": "تعبان", "ارهاق": "تعبان",
-    
-    # 😰 التوتر
     "متوتر": "متوتر", "قلقان": "متوتر", "مرتبك": "متوتر", 
     "خايف": "متوتر", "مخبوص": "متوتر", "مشغول": "متوتر", "توتر": "متوتر", "قلق": "متوتر",
-    
-    # 😌 الهدوء
     "هادئ": "هادئ", "رايق": "هادئ", "مروق": "هادئ", 
     "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ", "سكينة": "هادئ"
 }
@@ -157,20 +125,15 @@ def query_model(text_list):
     try:
         for text in text_list:
             clean_text = text.strip()
-            
             matched_label = None
             
-            # فحص الـ Rule-Based على الجملة كاملة بدون شرط الطول
             for key, label in EXPLICIT_RULES.items():
                 if key in clean_text:
                     matched_label = label
                     break
             
             if matched_label:
-                results.append({
-                    "label": matched_label,
-                    "score": 1.0 
-                })
+                results.append({"label": matched_label, "score": 1.0})
                 continue 
 
             inputs = tokenizer(clean_text, return_tensors="pt", padding=True, truncation=True, max_length=128)
@@ -196,7 +159,6 @@ last_emotion_memory = {}
 
 SYSTEM_PROMPT = """
 أنت أناه، مساعد دعم عاطفي عربي متزن وداعم.
-
 التعليمات:
 - استخدم لغة عربية فصحى بسيطة وطبيعية.
 - لا تجعل جميع الردود بنفس الطول.
@@ -205,9 +167,6 @@ SYSTEM_PROMPT = """
 - ابدأ بتفهم واضح ولمسة تعاطف هادئة.
 - اقترح خطوة عملية بسيطة عندما يكون ذلك مناسباً.
 - لا تنهِ كل رد بسؤال.
-- استخدم السؤال فقط إذا كان سيساعد بشكل طبيعي على فهم المستخدم أو دعمه.
-- أحياناً يكفي رد داعم دون أي سؤال.
-- تجنب التكرار والردود النمطية.
 - لا تبالغ في التعاطف أو الدرامية.
 - لا تقدم تشخيصات أو نصائح طبية.
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
@@ -228,19 +187,13 @@ def index():
 def save_journal():
     data = request.get_json(silent=True) or {}
     plain_text = (data.get("content") or "").strip()
-    
-    if not plain_text:
-        return jsonify({"error": "لا يوجد نص للحفظ"}), 400
-
+    if not plain_text: return jsonify({"error": "No text"}), 400
     encrypted_text = encrypt_journal(plain_text)
-    # قم بحفظ encrypted_text في قاعدة البيانات هنا
     return jsonify({"status": "success", "message": "تم حفظ يومياتك بأمان وتشفيرها!"})
 
 @app.route("/get_journals", methods=["GET"])
 def get_journals():
-    # اسحب اليوميات المشفرة من قاعدة البيانات هنا
     encrypted_from_db = [] 
-    
     decrypted_journals = []
     for journal in encrypted_from_db:
         original_text = decrypt_journal(journal["encrypted_content"])
@@ -248,33 +201,27 @@ def get_journals():
             "date": journal["date"],
             "content": original_text
         })
-        
     return jsonify({"journals": decrypted_journals})
 
 @app.route("/predict", methods=["POST"])
 def predict():
     if model is None:
         return jsonify({"error": "المحرك لا يزال قيد التحميل، حاول بعد قليل"}), 503
-
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
-
     sentences = split_arabic_sentences(text) or [text]
     results = query_model(sentences)
     if not results: return jsonify({"error": "AI Engine Error"}), 500
-
     mood_counts = {}
     mood_scores = {}
     sentence_details = []
-
     for i, res in enumerate(results):
         mood = res["label"]
         score = res["score"]
         mood_counts[mood] = mood_counts.get(mood, 0) + 1
         mood_scores[mood] = mood_scores.get(mood, 0.0) + score
         sentence_details.append({"sentence": sentences[i], "mood": mood, "score": score})
-
     sorted_moods = sorted(mood_counts.keys(), key=lambda k: (mood_counts[k], mood_scores[k]), reverse=True)
     return jsonify({
         "finalMood": sorted_moods[0],
@@ -286,95 +233,34 @@ def predict():
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
-
     user_message = (data.get("message") or data.get("text") or "").strip()
     current_mood = (data.get("currentMood") or "غير محدد").strip()
-
-    if len(user_message) < 2:
-        return jsonify({"reply": "أنا هنا معك 🤍"})
-
+    if len(user_message) < 2: return jsonify({"reply": "أنا هنا معك 🤍"})
     try:
-
-        # --------------------------------------------
-        # ✨ الرسائل العادية
-        # --------------------------------------------
-
-        casual_messages = [
-            "هاي", "هلا", "السلام", "السلام عليكم",
-            "اهلا", "مرحبا", "كيفك", "شلونك",
-            "هههه", "lol", "اوكي", "تمام"
-        ]
-
+        casual_messages = ["هاي", "هلا", "السلام عليكم", "مرحبا", "كيفك", "تمام"]
         detected_emotion = current_mood
-
-        # --------------------------------------------
-        # ✨ تحليل المشاعر فقط عند الحاجة
-        # --------------------------------------------
-
         should_analyze = len(user_message.split()) >= 4
-
         if should_analyze:
             res = query_model([user_message])
-
-            if res and len(res) > 0:
-                detected_emotion = res[0]["label"]
-
-        # إذا كانت رسالة عادية لا تغيّر الشعور
+            if res: detected_emotion = res[0]["label"]
         if user_message.strip().lower() in casual_messages:
             detected_emotion = current_mood
-
-        # حفظ آخر شعور
         last_emotion_memory["last"] = detected_emotion
-
-        # --------------------------------------------
-        # 🧠 البرومبت الذكي
-        # --------------------------------------------
-
-        prompt = f"""
-المستخدم حالته الحالية: {current_mood}
-
-الشعور المستنتج من الرسالة: {detected_emotion}
-
-رسالة المستخدم:
-{user_message}
-
-تعليمات الرد:
-- كن طبيعيًا جدًا.
-- لا تخترع مشاعر غير موجودة.
-- إذا كانت الرسالة بسيطة اجعل الرد قصيرًا.
-- إذا كانت الرسالة عاطفية كن داعمًا ومتفهماً.
-- لا تعطِ تشخيصات طبية.
-"""
-
+        prompt = f"المستخدم حالته: {current_mood}\nالشعور المستنتج: {detected_emotion}\nالرسالة: {user_message}"
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=80,
-            timeout=20,
             messages=[
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
             ]
         )
-
-        reply = response.choices[0].message.content.strip()
-
         return jsonify({
-            "reply": reply,
+            "reply": response.choices[0].message.content.strip(),
             "emotion_used": detected_emotion
         })
-
     except Exception as e:
-        print(f"❌ Chat Error: {e}")
-
-        return jsonify({
-            "reply": "أنا هنا لأسمعك 🤍"
-        })
+        return jsonify({"reply": "أنا هنا لأسمعك 🤍"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
