@@ -149,7 +149,7 @@ function normalizeMood(raw) {
     mood.includes("توتر") ||
     mood.includes("worried")
   ) {
-    return "قلق";
+    return "متوتر";
   }
 
   if (

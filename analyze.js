@@ -3,14 +3,14 @@ console.log("✅ analyze.js v7 loaded (range persistence fixed)");
 let chartInstance = null;
 
 // ثابت ترتيب المشاعر (عشان الرسم ما يتغير ترتيب أعمدته كل مرة)
-const MOOD_ORDER = ["سعيد", "لا بأس", "حزين", "قلق", "غاضب", "متعب", "غير محدد"];
+const MOOD_ORDER = ["سعيد", "لا بأس", "حزين", "متوتر", "غاضب", "متعب", "غير محدد"];
 
 const MOOD_IMAGES = {
   "سعيد": "images/Habby.png",
   "لا بأس": "images/Ok.png",
   "غاضب": "images/Angry.png",
   "حزين": "images/Sad.png",
-  "قلق": "images/worried.png",
+  "متوتر": "images/worried.png",
   "متعب": "images/Tired.png",
   "غير محدد":
     "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='50%' y='50%' font-size='40' text-anchor='middle' dominant-baseline='middle'>❔</text></svg>"
@@ -194,7 +194,8 @@ function cleanMood(m) {
 function normalizeMood(raw) {
   let m = cleanMood(raw);
 
-  if (m === "متوتر") m = "قلق";
+  if (m === "متوتر") m = "متوتر";
+  if (m === "قلق") m = "متوتر";
   if (m === "تعبان") m = "متعب";
   if (m === "هادئ") m = "لا بأس";
 
