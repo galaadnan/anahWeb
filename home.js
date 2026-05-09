@@ -544,37 +544,43 @@ function initChatbot() {
   }
 
   async function handleSend() {
-    const text = inputEl.value.trim();
+  const text = inputEl.value.trim();
 
-    if (!text) return;
+  if (!text) return;
 
-    appendMessage(text, "user");
-    inputEl.value = "";
+  appendMessage(text, "user");
+  inputEl.value = "";
 
-    try {
-      // تم تعديل الرابط ليتصل بـ Render بدلاً من الـ localhost
-      const res = await fetch("https://anahweb.onrender.com/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: text
-        })
-      });
+  try {
+    // ✅ نجيب الشعور الحالي من localStorage
+    const currentMood =
+      localStorage.getItem("anah_current_mood") || "غير محدد";
 
-      if (!res.ok) {
-        throw new Error("Chat request failed");
-      }
+    // ✅ نرسل الرسالة + الشعور الحالي للباك إند
+    const res = await fetch("https://anahweb.onrender.com/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: text,
+        currentMood: currentMood
+      })
+    });
 
-      const data = await res.json();
-
-      appendMessage(data.reply || "أنا معك 🤍", "bot");
-    } catch (error) {
-      console.error("Chatbot error:", error);
-      appendMessage("عذراً، حدث خطأ في الاتصال 💔", "bot");
+    if (!res.ok) {
+      throw new Error("Chat request failed");
     }
+
+    const data = await res.json();
+
+    appendMessage(data.reply || "أنا معك 🤍", "bot");
+
+  } catch (error) {
+    console.error("Chatbot error:", error);
+    appendMessage("عذراً، حدث خطأ في الاتصال 💔", "bot");
   }
+}
 
   sendBtn.onclick = handleSend;
 
