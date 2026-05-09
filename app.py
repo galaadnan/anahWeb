@@ -1,3 +1,17 @@
+import os
+import re
+import gdown
+import torch
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from openai import OpenAI
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)
+
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
 # ------------------------------------------------
 # ⚙️ Safetensors Engine & Google Drive Integration
 # ------------------------------------------------
