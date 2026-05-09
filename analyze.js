@@ -1,6 +1,7 @@
-console.log("✅ analyze.js v7 loaded (range persistence fixed)");
+console.log("✅ analyze.js v8 loaded (range persistence fixed + Smart External Recs)");
 
 let chartInstance = null;
+let anahSmartDB = {}; // متغير جديد لحفظ التوصيات الذكية من الملف
 
 // ثابت ترتيب المشاعر (عشان الرسم ما يتغير ترتيب أعمدته كل مرة)
 const MOOD_ORDER = ["سعيد", "هادئ", "حزين", "متوتر", "غاضب", "متعب", "غير محدد"];
@@ -314,75 +315,88 @@ function animateCount(el, to, duration = 600) {
 }
 
 /* ============================================================
-   ✅ Recommendations renderer (clean look + why button)
+   🔥 تحميل الداتا الذكية من ملف JSON الخارجي
 ============================================================ */
-
-function showRecommendations(todayMood, periodMood, daysLabel, ctx = null) {
-  const today = normalizeMood(todayMood || "غير محدد");
-  const period = normalizeMood(periodMood || "غير محدد");
-
-  const qEl = document.getElementById("recQuote");
-  const quickEl = document.getElementById("recQuick");
-  const dailyEl = document.getElementById("recDaily");
-  const weekEl = document.getElementById("recWeekNote");
-
-  if (!qEl || !quickEl || !dailyEl) return;
-
-  const safeCtx = ctx || {
-    daysLabel: daysLabel || "الفترة",
-    todayMood: today,
-    periodDominant: period,
-    secondMood: null,
-    volatility: 0
-  };
-
-  qEl.textContent = `“${buildWowQuote(safeCtx)}”`;
-
-  const picked = pickEvidenceForMood(today, safeCtx);
-  const first = picked[0];
-  const second = picked[1];
-
-  quickEl.innerHTML = first.steps.map((s) => `<li>${s}</li>`).join("");
-  dailyEl.innerHTML = second.steps.map((s) => `<li>${s}</li>`).join("");
-
-  if (weekEl) {
-    const v =
-      safeCtx.volatility >= 60
-        ? "مرتفع"
-        : safeCtx.volatility >= 30
-          ? "متوسط"
-          : "منخفض";
-
-    const shortRefs = [
-      ...new Set([...(first.refsShort || []), ...(second.refsShort || [])])
-    ].join(" · ");
-
-    const fullRefs = [
-      ...new Set([...(first.refsFull || []), ...(second.refsFull || [])])
-    ].join(" · ");
-
-    weekEl.innerHTML = `
-      <span style="display:inline-flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span class="rec-chip">نمط ${safeCtx.daysLabel}: ${period}</span>
-        ${safeCtx.secondMood ? `<span class="rec-chip">ثم: ${safeCtx.secondMood}</span>` : ""}
-        <span class="rec-chip">تذبذب: ${v}</span>
-        <span class="rec-chip">${shortRefs}</span>
-        <button type="button" id="whyRecBtn" class="rec-why-btn">لماذا هذه التوصية؟</button>
-      </span>
-      <div id="whyRecBox" class="rec-why-box" hidden>
-        <div class="rec-why-title">اعتمدنا على (تقنيات/مراجع):</div>
-        <div class="rec-why-body">${fullRefs}</div>
-      </div>
-    `;
-
-    const whyBtn = document.getElementById("whyRecBtn");
-    const whyBox = document.getElementById("whyRecBox");
-
-    if (whyBtn && whyBox) {
-      whyBtn.onclick = () => {
-        whyBox.hidden = !whyBox.hidden;
-      };
+async function loadSmartRecommendations() {
+  try {
+    const response = await fetch('anah_recommendations_ar_dataset.json');
+    const data = await response.json();
+    
+    if (Array.isArray(data)) {
+        data.forEach(item => {
+            if (!anahSmartDB[item.mood]) anahSmartDB[item.mood] = [];
+            anahSmartDB[item.mood].push({
+                moment_containment: item.moment_containment || item.quick_steps,
+                day_step: item.day_step || item.daily_suggestions
+            });
+        });
+    } else {
+        anahSmartDB = data;
     }
+    console.log("📚 تم تحميل التوصيات الذكية من الملف بنجاح!");
+  } catch (error) {
+    console.error("❌ خطأ في تحميل ملف التوصيات:", error);
+  }
+}
+
+/* ============================================================
+   ✅ التعديل المطلوب: رسم البطاقات الذكية
+============================================================ */
+function showRecommendations(todayMood, periodMood, daysLabel, ctx = null) {
+  const mainMood = normalizeMood(periodMood || "غير محدد");
+  const fallbackMood = normalizeMood(todayMood || "غير محدد");
+  
+  let targetMood = mainMood;
+  if (targetMood === "غير محدد" && fallbackMood !== "غير محدد") {
+      targetMood = fallbackMood;
+  }
+
+  // سحب التوصيات عشوائياً بناءً على الداتا المحملة
+  const moodRecs = anahSmartDB[targetMood] || [
+    { moment_containment: "خذ نفساً عميقاً واستشعر اللحظة الحالية بهدوء.", day_step: "استمر في تسجيل يومياتك ليتعرف أناه عليك أكثر." }
+  ];
+  const randomRec = moodRecs[Math.floor(Math.random() * moodRecs.length)];
+
+  // إخفاء الواجهة القديمة (القوائم والنصوص)
+  const oldQuote = document.getElementById("recQuote");
+  const oldQuick = document.getElementById("recQuick");
+  const oldDaily = document.getElementById("recDaily");
+  const oldNote = document.getElementById("recWeekNote");
+  
+  if (oldQuote) oldQuote.style.display = "none";
+  if (oldNote) oldNote.style.display = "none";
+  if (oldQuick && oldQuick.parentElement) oldQuick.parentElement.style.display = "none";
+  if (oldDaily && oldDaily.parentElement) oldDaily.parentElement.style.display = "none";
+
+  const recCard = document.getElementById("recommendationCard");
+  if (recCard) {
+    const oldSections = recCard.querySelectorAll(".rec-section");
+    oldSections.forEach(sec => sec.style.display = "none");
+  }
+
+  // رسم البطاقات الذكية في الصندوق المخصص
+  let smartContainer = document.getElementById("anah-recommendations-container");
+  
+  if (smartContainer) {
+      smartContainer.innerHTML = `
+        <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; text-align: right;">
+          
+          <div style="flex: 1; min-width: 250px; background: #FDF4F5; padding: 18px; border-radius: 12px; border-right: 5px solid #FF7675; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <h4 style="color: #D63031; margin-top: 0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+              <span>🤍</span> احتواء اللحظة
+            </h4>
+            <p style="font-size: 0.95rem; color: #444; line-height: 1.6; margin: 0;">${randomRec.moment_containment}</p>
+          </div>
+
+          <div style="flex: 1; min-width: 250px; background: #F4F9F4; padding: 18px; border-radius: 12px; border-right: 5px solid #55EFC4; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <h4 style="color: #00B894; margin-top: 0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+              <span>🌅</span> خطوتك لليوم
+            </h4>
+            <p style="font-size: 0.95rem; color: #444; line-height: 1.6; margin: 0;">${randomRec.day_step}</p>
+          </div>
+
+        </div>
+      `;
   }
 }
 
@@ -408,7 +422,7 @@ async function loadAnalyzedData(days) {
 
   console.log("📅 Range:", startISO, "->", endISO);
 
- 
+  
     const db = firebase.firestore();
     const userRef = db.collection("users").doc(user.uid);
 
@@ -666,6 +680,9 @@ async function renderDashboard(days) {
 ========================= */
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 🔥 استدعاء التوصيات من ملف الجيسون مباشرة
+  loadSmartRecommendations();
+
   const chips = document.querySelectorAll(".an-chip");
   const rangeLabel = document.getElementById("analysisRange");
   const DEFAULT_RANGE = 90;
