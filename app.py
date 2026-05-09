@@ -54,47 +54,68 @@ tokenizer = None
 model = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
+import shutil # تأكدي إنك أضفتِ هذا السطر مع المكتبات فوق
+
 def setup_ai():
     global tokenizer, model
     
+    # تحديد الملفات الأساسية المطلوبة للتشغيل
     config_path = os.path.join(BASE_DIR, "config.json")
+    weights_path = os.path.join(BASE_DIR, "model.safetensors")
+    # ملاحظة: إذا كان موديلك يستخدم pytorch_model.bin بدلاً من safetensors، غيري الاسم فوق
     
-    # 1. التحقق من وجود الملفات، إذا لم تكن موجودة نحمل ملف الـ ZIP
-    if not os.path.exists(config_path):
-        print("⏳ جاري تحميل الحزمة الكاملة (ZIP) من Google Drive...")
+    # 1. التحقق: إذا نقص أي ملف أساسي، نبدأ عملية تحميل نظيفة
+    if not os.path.exists(config_path) or not os.path.exists(weights_path):
+        print("⏳ ملفات الموديل ناقصة أو غير مكتملة، جاري التحميل من Google Drive...")
+        
+        # تنظيف أي ملفات قديمة قد تسبب تعارض
+        if os.path.exists(config_path): os.remove(config_path)
+        
         url = f'https://drive.google.com/uc?id={FILE_ID}'
         try:
+            # تحميل ملف الـ ZIP
             gdown.download(url, ZIP_PATH, quiet=False)
             
-            # 2. فك الضغط
+            # فك الضغط
             print("📦 جاري فك ضغط الملفات...")
             with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
                 zip_ref.extractall(BASE_DIR)
             
-            # ✨ حركة ذكية: نقل الملفات من المجلد الفرعي إلى المجلد الرئيسي إذا لزم الأمر
+            # ✨ النقل الذكي: البحث عن المجلد الفرعي (مثل checkpoint-1821) ونقل محتوياته للأعلى
             for root, dirs, files in os.walk(BASE_DIR):
                 if "config.json" in files and root != BASE_DIR:
-                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها...")
+                    print(f"📂 تم العثور على الملفات في {root}، جاري نقلها للمجلد الرئيسي...")
                     for f in os.listdir(root):
-                        shutil.move(os.path.join(root, f), os.path.join(BASE_DIR, f))
+                        src = os.path.join(root, f)
+                        dst = os.path.join(BASE_DIR, f)
+                        # إذا الملف موجود مسبقاً نمسحه عشان ننقل الجديد
+                        if os.path.exists(dst): 
+                            if os.path.isdir(dst): shutil.rmtree(dst)
+                            else: os.remove(dst)
+                        shutil.move(src, dst)
                     break
             
-            print("✅ تم فك الضغط وتجهيز البيئة!")
+            # تنظيف: حذف ملف الـ ZIP بعد فك الضغط لتوفير مساحة
+            if os.path.exists(ZIP_PATH): os.remove(ZIP_PATH)
+            print("✅ تم تجهيز البيئة بنجاح!")
+            
         except Exception as e:
-            print(f"❌ فشل التحميل أو فك الضغط: {e}")
+            print(f"❌ فشل في تحميل أو تجهيز الموديل: {e}")
             raise e
 
+    # 2. تشغيل الموديل والتوكنايزر من الذاكرة
     print("🧠 جاري تشغيل نسخة (1 مايو) من الذاكرة...")
     try:
+        # نحمل من BASE_DIR لأننا تأكدنا أن الملفات أصبحت هناك
         tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
         model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
         model.eval()
         print("🚀 نظام أناه جاهز الآن بالتطابق الكامل مع جهازك!")
     except Exception as e:
+        # لو فشل التحميل، نطبع قائمة الملفات عشان نعرف إيش المشكلة بالضبط
         print(f"❌ خطأ في تحميل المحرك: {e}")
+        print(f"📁 الملفات المتوفرة حالياً في السيرفر: {os.listdir(BASE_DIR)}")
         raise e
-
-setup_ai()
 
 # ------------------------------------------------
 # 🛡️ Rule-Based Layer (القاموس المطور)
