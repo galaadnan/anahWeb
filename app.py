@@ -121,40 +121,47 @@ EXPLICIT_RULES = {
     "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ", "سكينة": "هادئ"
 }
 
-# Define a function to analyze a list of strings and predict emotions
+# Define the analysis function with the Confidence Threshold
 def query_model(text_list):
-    results = [] # Initialize a list to hold the results for each text segment
+    results = [] # List for per-sentence results
+    # --- THRESHOLD: If confidence is lower than 40%, label it as Undetermined ---
+    CONFIDENCE_THRESHOLD = 0.4 
+    
     try:
         for text in text_list:
-            clean_text = text.strip() # Remove leading/trailing whitespace
-            matched_label = None # Flag for keyword matches
+            clean_text = text.strip() # Remove whitespace
+            matched_label = None # Keyword match flag
             
-            # Check for keyword matches in the rule-based dictionary
+            # Check Rule-Based Dictionary first
             for key, label in EXPLICIT_RULES.items():
                 if key in clean_text:
-                    matched_label = label # Set label if keyword found
+                    matched_label = label
                     break
             
-            # If a keyword is found, return a 100% score for that label
+            # If keyword matched, assign 100% score
             if matched_label:
                 results.append({"label": matched_label, "score": 1.0})
                 continue 
 
-            # If no keyword found, use the deep learning model
+            # Run Deep Learning Inference
             inputs = tokenizer(clean_text, return_tensors="pt", padding=True, truncation=True, max_length=128)
-            with torch.no_grad(): # Disable gradient calculation for faster inference
-                outputs = model(**inputs) # Get model logits
+            with torch.no_grad():
+                outputs = model(**inputs)
             
-            # Apply Softmax to convert raw logits into probability scores
+            # Convert logits to probability distribution
             probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            # Find the index of the highest probability
+            # Find the index and score of the highest probability
+            best_score = torch.max(probs).item()
             best_idx = torch.argmax(probs).item()
             
-            # Append the label and its confidence score to results
-            results.append({
-                "label": LABELS[best_idx],
-                "score": float(probs[0][best_idx])
-            })
+            # --- APPLY THRESHOLD: Filter out gibberish/uncertain text ---
+            if best_score < CONFIDENCE_THRESHOLD:
+                results.append({"label": "غير محدد", "score": best_score})
+            else:
+                results.append({
+                    "label": LABELS[best_idx],
+                    "score": best_score
+                })
         return results
     except Exception as e:
         print(f"❌ Analysis Error: {e}")
