@@ -17,7 +17,7 @@ CORS(app)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------------------------------
-# 🔒 إعدادات تشفير اليوميات (AES-256-GCM)
+# 🔒 Journal Encryption Settings (AES-256-GCM)
 # ------------------------------------------------
 SECRET_KEY_B64 = os.environ.get("JOURNAL_AES_KEY", "x8V2kL9pR4mN7qW1zB3yH6cF0jD5tG8sA2vE4uX7oI0=")
 
@@ -45,7 +45,8 @@ def decrypt_journal(encrypted_text_b64: str) -> str:
 # ------------------------------------------------
 # ⚙️ Safetensors Engine (ZIP) & Google Drive Integration
 # ------------------------------------------------
-# تم تحديث FILE_ID بناءً على الرابط الجديد المقدم
+# Updated FILE_ID based on the new provided Google Drive link
+
 FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu" 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ZIP_PATH = os.path.join(BASE_DIR, "model.zip")
@@ -54,15 +55,14 @@ tokenizer = None
 model = None
 LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
 
-# تأكدي إن هذي المتغيرات فوق الدالة
 FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu" 
-WEIGHTS_FILENAME = "model.safetensors" # تأكدي إن هذا هو اسم الملف في درايف
+WEIGHTS_FILENAME = "model.safetensors" 
 WEIGHTS_PATH = os.path.join(BASE_DIR, WEIGHTS_FILENAME)
 
 def setup_ai():
     global tokenizer, model
     
-    # 1. التحقق من وجود الملف الكبير (الأوزان)
+    # 1. Check if the large model weights file exists
     if not os.path.exists(WEIGHTS_PATH):
         print(f"⏳ ملف الأوزان ({WEIGHTS_FILENAME}) غير موجود، جاري تحميله من Google Drive...")
         url = f'https://drive.google.com/uc?id={FILE_ID}'
@@ -73,23 +73,24 @@ def setup_ai():
             print(f"❌ فشل تحميل ملف الأوزان: {e}")
             raise e
 
-    # 2. تحميل الموديل والتوكنايزر في الذاكرة
+    # 2. Load the model and tokenizer into memory
     print("🧠 جاري تحميل الأوزان في الذاكرة (نسخة 1 مايو)...")
     try:
-        # التوكنايزر والموديل بيقرأون من BASE_DIR (GitHub + الوزن اللي نزلناه)
+        # The tokenizer and model load from BASE_DIR
+        # (GitHub files + downloaded model weights)
         tokenizer = AutoTokenizer.from_pretrained(BASE_DIR)
         model = AutoModelForSequenceClassification.from_pretrained(BASE_DIR)
         model.eval()
         print("🚀 أبشرك.. نظام أناه جاهز وشغال 100%!")
     except Exception as e:
         print(f"❌ خطأ في تشغيل المحرك: {e}")
-        # عشان نعرف إيش صار بالضبط لو فشل
+        # To help debug and identify the exact issue if loading fails
         print(f"📁 الملفات اللي قدر السيرفر يشوفها: {os.listdir(BASE_DIR)}")
         raise e
 setup_ai()
 
 # ------------------------------------------------
-# 🛡️ Rule-Based Layer (القاموس المطور)
+#  Rule-Based Layer (Enhanced Emotion Dictionary)
 # ------------------------------------------------
 EXPLICIT_RULES = {
     "غاضب": "غاضب", "معصب": "غاضب", "متنرفز": "غاضب", 
@@ -139,7 +140,7 @@ def query_model(text_list):
         return None
 
 # ------------------------------------------------
-# 🧠 Chatbot Memory & Prompt
+# Chatbot Memory & Prompt
 # ------------------------------------------------
 last_emotion_memory = {}
 
@@ -163,7 +164,7 @@ def split_arabic_sentences(text: str):
     return [s.strip() for s in sentences if len(s.strip()) > 3]
 
 # ------------------------------------------------
-# 🌐 Website Routes
+#  Website Routes
 # ------------------------------------------------
 @app.route("/")
 def index():
