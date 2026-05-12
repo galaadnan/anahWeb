@@ -120,41 +120,43 @@ EXPLICIT_RULES = {
     "هادئ": "هادئ", "رايق": "هادئ", "مروق": "هادئ", 
     "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ", "سكينة": "هادئ"
 }
-
-# Define the analysis function with the Confidence Threshold
 def query_model(text_list):
-    results = [] # List for per-sentence results
-    # --- THRESHOLD: If confidence is lower than 40%, label it as Undetermined ---
-    CONFIDENCE_THRESHOLD = 0.4 
+    results = [] # Initialize a list to hold the results for each text segment
+    # --- UPDATED: Confidence Threshold raised to 0.5 for stricter gibberish filtering ---
+    CONFIDENCE_THRESHOLD = 0.5 
     
     try:
         for text in text_list:
-            clean_text = text.strip() # Remove whitespace
-            matched_label = None # Keyword match flag
+            clean_text = text.strip() # Remove leading/trailing whitespace
+            matched_label = None # Flag for keyword matches
             
-            # Check Rule-Based Dictionary first
+            # Check for keyword matches in the rule-based dictionary
             for key, label in EXPLICIT_RULES.items():
                 if key in clean_text:
-                    matched_label = label
+                    matched_label = label # Set label if keyword found
                     break
             
-            # If keyword matched, assign 100% score
+            # If a keyword is found, return a 100% score for that label
             if matched_label:
                 results.append({"label": matched_label, "score": 1.0})
                 continue 
 
-            # Run Deep Learning Inference
+            # If no keyword found, use the deep learning model
             inputs = tokenizer(clean_text, return_tensors="pt", padding=True, truncation=True, max_length=128)
-            with torch.no_grad():
-                outputs = model(**inputs)
+            with torch.no_grad(): # Disable gradient calculation for faster inference
+                outputs = model(**inputs) # Get model logits
             
-            # Convert logits to probability distribution
+            # Apply Softmax to convert raw logits into probability scores
             probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-            # Find the index and score of the highest probability
-            best_score = torch.max(probs).item()
+            
+            # --- CRITICAL FIX: Explicitly extract the highest probability score ---
+            best_score = torch.max(probs).item() 
             best_idx = torch.argmax(probs).item()
             
-            # --- APPLY THRESHOLD: Filter out gibberish/uncertain text ---
+            # Print for debugging (visible in your Render logs)
+            print(f"DEBUG: Text: {clean_text} | Top Mood: {LABELS[best_idx]} | Score: {best_score}")
+
+            # --- LOGIC: If the model's confidence is too low (gibberish), label it as "Undetermined" ---
             if best_score < CONFIDENCE_THRESHOLD:
                 results.append({"label": "غير محدد", "score": best_score})
             else:
@@ -166,7 +168,6 @@ def query_model(text_list):
     except Exception as e:
         print(f"❌ Analysis Error: {e}")
         return None
-
 # ------------------------------------------------
 # Chatbot Memory & Prompt
 # ------------------------------------------------
