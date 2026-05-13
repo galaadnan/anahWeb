@@ -431,7 +431,23 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("save")?.addEventListener("click", saveTodayEntry);
   document.getElementById("showAll")?.addEventListener("click", openAllEntriesModal);
   document.getElementById("closeModal")?.addEventListener("click", () => document.getElementById("viewModal").hidden = true);
-  
+  // Clear the text inside the rich editor when the "مسح النص" button is clicked
+document.getElementById("clearToday")?.addEventListener("click", () => {
+  // Get the rich text editor element
+  const noteEl = document.getElementById("note");
+
+  // Stop if the editor does not exist
+  if (!noteEl) return;
+
+  // Clear all editor content, including formatted text, emojis, and images
+  noteEl.innerHTML = "";
+
+  // Put the cursor back inside the editor after clearing
+  noteEl.focus();
+
+  // Reset the saved cursor position because the old selection no longer exists
+  savedRange = null;
+});
   // Emoji palette toggle
   document.getElementById("emojiBtn")?.addEventListener("click", () => {
     const p = document.getElementById("emojiPalette"); 
