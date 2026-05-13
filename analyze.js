@@ -1,11 +1,21 @@
+
+// Prints a message in the browser console to confirm that analyze.js loaded successfully.
+
 console.log("✅ analyze.js v8 loaded (range persistence fixed + Smart External Recs)");
 
+// Stores the current Chart.js chart object.
+// We keep it here so we can update the same chart instead of creating many charts.
 let chartInstance = null;
-let anahSmartDB = {}; // متغير جديد لحفظ التوصيات الذكية من الملف
 
-// ثابت ترتيب المشاعر (عشان الرسم ما يتغير ترتيب أعمدته كل مرة)
+// Stores smart recommendations loaded from the external JSON file.
+let anahSmartDB = {}; 
+
+// Fixed order of moods.
+// We use this so the chart bars always appear in the same order.
 const MOOD_ORDER = ["سعيد", "هادئ", "حزين", "متوتر", "غاضب", "متعب", "غير محدد"];
 
+// Maps each mood to its image.
+// These images are used in the chart/list/top mood UI.
 const MOOD_IMAGES = {
   "سعيد": "images/Habby.png",
   "هادئ": "images/Ok.png",
@@ -15,7 +25,9 @@ const MOOD_IMAGES = {
   "متعب": "images/Tired.png",
   "غير محدد":
     "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><text x='50%' y='50%' font-size='40' text-anchor='middle' dominant-baseline='middle'>❔</text></svg>"
-};
+}; 
+// If the mood is unknown, show a question mark icon.
+
 
 /* =========================
    Legacy Personalized Recommendations (kept)
@@ -104,7 +116,7 @@ const RECOMMENDATIONS = {
 };
 
 /* ============================================================
-   ✅ WOW Recommendations (evidence-backed + dynamic + clean UI)
+    Recommendations (evidence-backed + dynamic + clean UI)
 ============================================================ */
 
 const EVIDENCE_LIBRARY = [
@@ -182,26 +194,35 @@ const WOW_TEMPLATES = {
     "اللطف مع نفسك جزء من العلاج."
   ]
 };
+// Picks a random item from an array.
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-
+// Cleans the mood value before using it.
 function cleanMood(m) {
   if (!m || typeof m !== "string") return "غير محدد";
-  return m.trim().split(/\s+/)[0];
+  return m.trim().split(/\s+/)[0]; 
+  // Remove extra spaces and take only the first word.
+  // This removes emojis or extra text after the mood.
 }
+// Converts different mood labels into one standard label.
 
 function normalizeMood(raw) {
+    // First clean the raw mood text.
+
   let m = cleanMood(raw);
+  // Treat "قلق" and "متوتر" as the same mood category.
 
   if (m === "قلق" || m === "متوتر") m = "متوتر";
   if (m === "تعبان") m = "متعب";
   if (m === "لا بأس") m = "هادئ";
   if (m === "هادى") m = "هادئ";
-
+// If the mood exists in MOOD_IMAGES, return it.
+  // Otherwise, return "غير محدد".
   return MOOD_IMAGES[m] ? m : "غير محدد";
 }
+// Returns the chart color for each mood.
 
 function moodColor(m) {
   if (m === "غاضب") return "#dd8181";
@@ -213,28 +234,48 @@ function moodColor(m) {
   return "#ccabd8";
 }
 
+// Converts a Date object into YYYY-MM-DD format.
+
 function isoDate(d) {
   return d.toISOString().split("T")[0];
 }
 
+// Measures how much the user's mood changes across days.
+
 function computeVolatility(historyList) {
+    // Copy the list and sort it from oldest date to newest date.
+
   const sorted = historyList.slice().sort((a, b) => a.date.localeCompare(b.date));
+  // If there is only one day or no data, there is no volatility.
+  // Counts how many times the mood changed from one day to the next.
 
   if (sorted.length <= 1) return 0;
+  // Counts how many times the mood changed from one day to the next.
 
   let changes = 0;
+  // Loop through the sorted mood history.
 
   for (let i = 1; i < sorted.length; i++) {
+        // If today's mood is different from yesterday's mood, count it as a change.
+
     if (sorted[i].dominant !== sorted[i - 1].dominant) changes++;
   }
+  // Convert number of changes into a percentage.
 
   return Math.round((changes / (sorted.length - 1)) * 100);
 }
+// Finds the most common and second most common mood.
 
 function topTwoMoods(entryCounts) {
+    // Convert the mood count object into an array and sort it from highest count to lowest count.
+
   const arr = Object.entries(entryCounts).sort((a, b) => b[1] - a[1]);
+  // Return the first and second mood.
 
   return {
+        // Most frequent mood.
+    // Second most frequent mood, or null if it does not exist.
+
     first: arr[0]?.[0] || "غير محدد",
     second: arr[1]?.[0] || null
   };
@@ -314,25 +355,36 @@ function animateCount(el, to, duration = 600) {
   requestAnimationFrame(step);
 }
 
-/* ============================================================
-   🔥 تحميل الداتا الذكية من ملف JSON الخارجي
-============================================================ */
+
+// Loads smart recommendations from an external JSON file.
+
 async function loadSmartRecommendations() {
   try {
+        // Request the recommendation dataset file.
     const response = await fetch('anah_recommendations_ar_dataset.json');
+        // Convert the response into JavaScript data.
+
     const data = await response.json();
-    
+        // If the JSON file is an array, organize it by mood.
+
     if (Array.isArray(data)) {
+              // If this mood does not exist yet in the database, create an empty array.
+
         data.forEach(item => {
             if (!anahSmartDB[item.mood]) anahSmartDB[item.mood] = [];
+             // Add the recommendation to the correct mood.
             anahSmartDB[item.mood].push({
                 moment_containment: item.moment_containment || item.quick_steps,
                 day_step: item.day_step || item.daily_suggestions
             });
         });
     } else {
+            // If the JSON is already organized as an object, store it directly.
+
         anahSmartDB = data;
     }
+        // Log success in the console.
+
     console.log("📚 تم تحميل التوصيات الذكية من الملف بنجاح!");
   } catch (error) {
     console.error("❌ خطأ في تحميل ملف التوصيات:", error);
@@ -340,43 +392,57 @@ async function loadSmartRecommendations() {
 }
 
 /* ============================================================
-   ✅ التعديل المطلوب: رسم البطاقات الذكية
+ Displays recommendation cards based on the user's mood.
 ============================================================ */
+
 function showRecommendations(todayMood, periodMood, daysLabel, ctx = null) {
+    // Use the dominant mood in the selected period.
+
   const mainMood = normalizeMood(periodMood || "غير محدد");
+    // Use today's mood as a backup.
   const fallbackMood = normalizeMood(todayMood || "غير محدد");
-  
+   // Start with the period mood as the target mood.
   let targetMood = mainMood;
+  // If the period mood is unknown but today's mood is known, use today's mood.
   if (targetMood === "غير محدد" && fallbackMood !== "غير محدد") {
       targetMood = fallbackMood;
   }
+  // Get recommendations for the selected mood.
+  // If no recommendation exists, use a default fallback.
 
-  // سحب التوصيات عشوائياً بناءً على الداتا المحملة
+  
   const moodRecs = anahSmartDB[targetMood] || [
     { moment_containment: "خذ نفساً عميقاً واستشعر اللحظة الحالية بهدوء.", day_step: "استمر في تسجيل يومياتك ليتعرف أناه عليك أكثر." }
   ];
+    // Pick one recommendation randomly so the user does not see the same text every time.
+
   const randomRec = moodRecs[Math.floor(Math.random() * moodRecs.length)];
 
-  // إخفاء الواجهة القديمة (القوائم والنصوص)
+  // Get old recommendation elements from the page.
   const oldQuote = document.getElementById("recQuote");
   const oldQuick = document.getElementById("recQuick");
   const oldDaily = document.getElementById("recDaily");
   const oldNote = document.getElementById("recWeekNote");
-  
+    // Hide the old recommendation UI.
+
   if (oldQuote) oldQuote.style.display = "none";
   if (oldNote) oldNote.style.display = "none";
   if (oldQuick && oldQuick.parentElement) oldQuick.parentElement.style.display = "none";
   if (oldDaily && oldDaily.parentElement) oldDaily.parentElement.style.display = "none";
+  // Find the old recommendation card.
 
   const recCard = document.getElementById("recommendationCard");
+    // Hide old sections inside the recommendation card.
+
   if (recCard) {
     const oldSections = recCard.querySelectorAll(".rec-section");
     oldSections.forEach(sec => sec.style.display = "none");
   }
 
-  // رسم البطاقات الذكية في الصندوق المخصص
+  // Find the container where the new smart cards will be inserted.
   let smartContainer = document.getElementById("anah-recommendations-container");
-  
+  // If the container exists, insert the new recommendation cards.
+
   if (smartContainer) {
       smartContainer.innerHTML = `
         <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; text-align: right;">
