@@ -55,7 +55,7 @@ def decrypt_journal(encrypted_text_b64: str) -> str:
 # ⚙️ Safetensors Engine (ZIP) & Google Drive Integration
 # ------------------------------------------------
 # Set the unique Google Drive ID for the trained model weights
-FILE_ID = "1chP2XPiS9QkfLRZUrOVN1Md4xD4890cu" 
+FILE_ID = "1pV05XuZuyiJk_ND2AF6HddbGIlWmQBU7" 
 # Get the absolute path of the directory where the script is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Define the local path where the model zip should be stored
