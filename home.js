@@ -534,14 +534,37 @@ function initChatbot() {
     };
   }
 
-  function appendMessage(message, sender) {
-    const div = document.createElement("div");
-    div.className = `message ${sender}-msg`;
-    div.textContent = message;
+ function appendMessage(message, sender) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}-msg`;
+  div.textContent = message;
 
-    messagesEl.appendChild(div);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function showTypingIndicator() {
+  const typing = document.createElement("div");
+
+  typing.className = "message typing-message";
+  typing.id = "typingIndicator";
+
+  typing.innerHTML = `
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+  `;
+
+  messagesEl.appendChild(typing);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const typing = document.getElementById("typingIndicator");
+
+  if (typing) {
+    typing.remove();
   }
+}
 
   async function handleSend() {
   const text = inputEl.value.trim();
@@ -551,6 +574,7 @@ function initChatbot() {
   appendMessage(text, "user");
   inputEl.value = "";
 
+  showTypingIndicator();
   try {
     // ✅ نجيب الشعور الحالي من localStorage
     const currentMood =
@@ -573,11 +597,13 @@ function initChatbot() {
     }
 
     const data = await res.json();
+    removeTypingIndicator();
 
     appendMessage(data.reply || "أنا معك 🤍", "bot");
 
   } catch (error) {
     console.error("Chatbot error:", error);
+    removeTypingIndicator();
     appendMessage("عذراً، حدث خطأ في الاتصال 💔", "bot");
   }
 }

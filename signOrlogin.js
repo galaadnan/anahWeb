@@ -421,6 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (successModal) {
           successModal.hidden = false;
+          document.body.style.overflow = "auto";
         } else {
           showAuthError("تم إنشاء الحساب بنجاح. يمكنك الآن تسجيل الدخول.");
         }

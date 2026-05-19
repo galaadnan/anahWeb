@@ -276,7 +276,7 @@ def chat():
         prompt = f"المستخدم حالته: {current_mood}\nالشعور المستنتج: {detected_emotion}\nالرسالة: {user_message}"
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            max_tokens=80,
+            max_tokens=45,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
