@@ -106,43 +106,19 @@ setup_ai()
 #  Rule-Based Layer (Enhanced Emotion Dictionary)
 # ------------------------------------------------
 # Define a dictionary for keyword-based overrides to handle dialect and explicit terms
-# ------------------------------------------------
-#  Rule-Based Layer (Enhanced Emotion Dictionary)
-# ------------------------------------------------
-# قاموس الكلمات المفتاحية مع إضافة اللهجة العامية والدارجة
 EXPLICIT_RULES = {
-    # 💥 الغضب
-    "غاضب": "غاضب", "معصب": "غاضب", "عصبية": "غاضب", "يعصب": "غاضب", "متنرفز": "غاضب",
+    "غاضب": "غاضب", "معصب": "غاضب", "متنرفز": "غاضب", 
     "منقهر": "غاضب", "مفور": "غاضب", "منفعل": "غاضب", "قهر": "غاضب", "غضب": "غاضب",
-    "واصلة معي": "غاضب", "نرفزة": "غاضب", "حارق دمي": "غاضب", "مستفز": "غاضب", "طارت بوهتي": "غاضب",
-    
-    # ✨ السعادة
-    "سعيد": "سعيد", "فرحان": "سعيد", "مبسوط": "سعيد", "مستانس": "سعيد", "طاير": "سعيد",
-    "مبهوج": "سعيد", "فرح": "سعيد", "رضا": "سعيد", "وناسة": "سعيد", "حماس": "سعيد",
-    "يجنن": "سعيد", "يهبل": "سعيد", "طربان": "سعيد", "روعة": "سعيد", "مكيّف": "سعيد",
-    
-    # 🌧️ الحزن
-    "حزين": "حزين", "زعلان": "حزين", "متضايق": "حزين", "مكتئب": "حزين", "مهموم": "حزين",
-    "مقهور": "حزين", "حزن": "حزين", "ضيق": "حزين", "إحباط": "حزين", "مخنوق": "حزين",
-    "ضايق صدري": "حزين", "غصة": "حزين", "منهار": "حزين", "متحطم": "حزين", "كئيب": "حزين", "منكسر": "حزين",
-    
-    # 🔋 التعب
-    "تعبان": "تعبان", "مرهق": "تعبان", "هلكان": "تعبان", "مهدود": "تعبان", "طافي": "تعبان",
-    "دايخ": "تعبان", "مكسر": "تعبان", "تعب": "تعبان", "ارهاق": "تعبان", "مكروف": "تعبان",
-    "منتهي": "تعبان", "فاصل": "تعبان", "ميت تعب": "تعبان", "مصدع": "تعبان", "حيلي مهدود": "تعبان",
-    
-    # 😰 التوتر
-    "متوتر": "متوتر", "قلقان": "متوتر", "مرتبك": "متوتر", "خايف": "متوتر", "مخبوص": "متوتر",
-    "مشغول": "متوتر", "توتر": "متوتر", "قلق": "متوتر", "أحاتي": "متوتر", "شايل هم": "متوتر",
-    "حايس": "متوتر", "على أعصابي": "متوتر", "خوف": "متوتر", "أم الركب": "متوتر", "مرعوب": "متوتر",
-    
-  # 🧘‍♀️ الهدوء
-    "هادئ": "هادئ", "هادي": "هادئ", "هاديه": "هادئ", "رايق": "هادئ", "رايقه": "هادئ",
-    "مروق": "هادئ", "مروقه": "هادئ", "روقان": "هادئ", "رواق": "هادئ", "مرتاح": "هادئ",
-    "مرتاحه": "هادئ", "مسترخي": "هادئ", "مسترخيه": "هادئ", "استرخاء": "هادئ", "مفضي": "هادئ",
-    "هدوء": "هادئ", "سكينة": "هادئ", "سكينه": "هادئ", "بسلام": "هادئ", "سلام داخلي": "هادئ",
-    "مصفي": "هادئ", "ريلاكس": "هادئ", "صافي ذهني": "هادئ", "طمأنينة": "هادئ", "طمانينه": "هادئ",
-    "مطمئن": "هادئ", "متطمن": "هادئ", "راحة": "هادئ", "راحه": "هادئ", "مستقر": "هادئ"
+    "سعيد": "سعيد", "فرحان": "سعيد", "مبسوط": "سعيد", 
+    "مستانس": "سعيد", "طاير": "سعيد", "مبهوج": "سعيد", "فرح": "سعيد", "رضا": "سعيد",
+    "حزين": "حزين", "زعلان": "حزين", "متضايق": "حزين", 
+    "مكتئب": "حزين", "مهموم": "حزين", "مقهور": "حزين", "حزن": "حزين", "ضيق": "حزين", "إحباط": "حزين",
+    "تعبان": "تعبان", "مرهق": "تعبان", "هلكان": "تعبان", 
+    "مهدود": "تعبان", "طافي": "تعبان", "دايخ": "تعبان", "مكسر": "تعبان", "تعب": "تعبان", "ارهاق": "تعبان",
+    "متوتر": "متوتر", "قلقان": "متوتر", "مرتبك": "متوتر", 
+    "خايف": "متوتر", "مخبوص": "متوتر", "مشغول": "متوتر", "توتر": "متوتر", "قلق": "متوتر",
+    "هادئ": "هادئ", "رايق": "هادئ", "مروق": "هادئ", 
+    "مرتاح": "هادئ", "مسترخي": "هادئ", "مفضي": "هادئ", "هدوء": "هادئ", "سكينة": "هادئ"
 }
 def query_model(text_list):
     results = [] # Initialize a list to hold the results for each text segment
@@ -192,9 +168,8 @@ def query_model(text_list):
     except Exception as e:
         print(f"❌ Analysis Error: {e}")
         return None
-
 # ------------------------------------------------
-# Chatbot Memory, Pre-processing & Prompt
+# Chatbot Memory & Prompt
 # ------------------------------------------------
 # Dictionary to store the previous emotion to maintain context in conversation
 last_emotion_memory = {}
@@ -215,37 +190,10 @@ SYSTEM_PROMPT = """
 - اجعل الرد يبدو إنسانياً وهادئاً ومتزنًا.
 """
 
-# الكلمات التي يجب ألا تنفصل عن السياق
-CONTEXT_WORDS = ["الحمدلله", "الحمد لله", "يارب", "يا رب", "والله", "ما شاء الله", "ماشاءالله", "بسم الله"]
-
-def clean_and_merge_text(text: str) -> str:
-    """
-    هذه الدالة تقوم بربط الكلمات السياقية بما بعدها وتزيل الفواصل التي تقطعها.
-    """
-    cleaned_text = text
-    for word in CONTEXT_WORDS:
-        # البحث عن الكلمة متبوعة بفاصلة أو نقطة ومسافات
-        pattern = re.compile(f"{re.escape(word)}\\s*[،.,!؟?\\n]+")
-        # استبدالها بالكلمة مع مسافة فقط لدمجها مع الجملة التالية
-        cleaned_text = pattern.sub(f"{word} ", cleaned_text)
-    return cleaned_text
-
-# Define a function to split Arabic text into sentences based on punctuation safely
+# Define a function to split Arabic text into sentences based on punctuation
 def split_arabic_sentences(text: str):
-    # 1. الدمج الذكي للكلمات السياقية
-    smart_text = clean_and_merge_text(text)
-    
-    # 2. التقطيع الآمن بناءً على الفواصل والنقاط
-    sentences = re.split(r'[.؟!،\n]+', smart_text)
-    
-    # 3. فلترة الأجزاء الصالحة وتجاهل الأجزاء اللي تحتوي على كلمة سياقية لحالها
-    valid_sentences = []
-    for s in sentences:
-        clean_s = s.strip()
-        if len(clean_s) > 3 and clean_s not in CONTEXT_WORDS:
-            valid_sentences.append(clean_s)
-            
-    return valid_sentences
+    sentences = re.split(r'[.؟!،\n]+', text) # Split by dots, question marks, commas, etc.
+    return [s.strip() for s in sentences if len(s.strip()) > 3] # Return sentences longer than 3 chars
 
 # ------------------------------------------------
 #  Website Routes
@@ -285,27 +233,20 @@ def predict():
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text: return jsonify({"error": "No text"}), 400
-    
-    # هنا سيتم استخدام الدالة الذكية الجديدة للتقطيع والتنظيف
-    sentences = split_arabic_sentences(text) or [text] 
-    
+    sentences = split_arabic_sentences(text) or [text] # Split text into sentences
     results = query_model(sentences) # Run sentiment analysis
     if not results: return jsonify({"error": "AI Engine Error"}), 500
-    
     mood_counts = {} # Counter for emotion frequencies
     mood_scores = {} # Summer for emotion probabilities
     sentence_details = [] # Detailed analysis per sentence
-    
     for i, res in enumerate(results):
         mood = res["label"]
         score = res["score"]
         mood_counts[mood] = mood_counts.get(mood, 0) + 1
         mood_scores[mood] = mood_scores.get(mood, 0.0) + score
         sentence_details.append({"sentence": sentences[i], "mood": mood, "score": score})
-        
     # Sort emotions by frequency and then by average score
     sorted_moods = sorted(mood_counts.keys(), key=lambda k: (mood_counts[k], mood_scores[k]), reverse=True)
-    
     # Return primary mood, secondary mood, and full breakdown
     return jsonify({
         "finalMood": sorted_moods[0],
