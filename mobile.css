@@ -470,9 +470,6 @@
   display: flex !important;
   flex-direction: column !important;
 }
-.tasks-card {
-    display: none !important;
-  }
 
   /* =========================
      CHATBOT
