@@ -65,8 +65,8 @@ ZIP_PATH = os.path.join(BASE_DIR, "model.zip")
 tokenizer = None
 model = None
 # Define the ordered list of emotion labels used by the model
-LABELS = ["هادئ", "سعيد", "حزين", "غاضب", "متوتر", "تعبان"]
-
+# الترتيب الصحيح 100% المطابق لملف config.json
+LABELS = ["متوتر", "تعبان", "حزين", "سعيد", "غاضب", "هادئ"]
 # Define the filename and full path for the Safetensors weight file
 WEIGHTS_FILENAME = "model.safetensors" 
 WEIGHTS_PATH = os.path.join(BASE_DIR, WEIGHTS_FILENAME)
